@@ -3,6 +3,7 @@ import os
 import sys
 import re
 import shutil
+import ntpath
 import configparser
 import json
 import pkg_resources
@@ -105,7 +106,8 @@ def get_theme_colors():
   return (get_curses_color(theme_config.get('text', 'yellow')),
     get_curses_color(theme_config.get('banner', 'yellow')),
     get_curses_color(theme_config.get('banner_text', 'black')),
-    get_curses_color(theme_config.get('background', -1)))
+    get_curses_color(theme_config.get('background', -1)),
+    )
 
 
 def conf_scr():
@@ -123,7 +125,8 @@ def conf_scr():
   curses.init_pair(7, getattr(curses, 'COLOR_RED'), 234)
   curses.init_pair(8, 240, -1)
   curses.init_pair(9, 240, 234)
-  curses.halfdelay(10)
+  curses.init_pair(10, getattr(curses, 'COLOR_YELLOW'), 234)
+  curses.halfdelay(11)
 
 def str_formatter(coin, val, held, ticks):
   '''Prepare the coin strings as per ini length/decimal place values'''
@@ -168,7 +171,6 @@ def write_scr(stdscr, wallet, y, x):
   from math import ceil
   width, _ = terminal_size()
   width -= 5
-
   ticks = [5,15,18,18,18,18,10]
   diffs = [0,0,2,2,2,2,4]
   scale = max(width / float(sum(ticks)),1.0)
@@ -177,7 +179,7 @@ def write_scr(stdscr, wallet, y, x):
 
   stdscr.erase()
   if y >= 1:
-    stdscr.addnstr(0, 0, 'Default', x, curses.color_pair(2))
+    stdscr.addnstr(0, 0, 'Trezor', x, curses.color_pair(10))
   if y >= 2:
     header = '{:<%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
     header = header.format(
@@ -185,8 +187,30 @@ def write_scr(stdscr, wallet, y, x):
     stdscr.addnstr(1, 0, header, x, curses.color_pair(1))
 
   total = 0
-  coinl = list(wallet.keys())
-  heldl = list(wallet.values())
+  coinlr = list(wallet.keys())
+  heldlr = list(wallet.values())
+  coinl = []
+  heldl = []
+
+  coinb = []
+  heldb = []
+
+  for i in range(len(coinlr)):
+    if coinlr[i].startswith('bittrex:'):
+      from bittrex import Bittrex
+      ex = Bittrex(coinlr[i].split(':')[1],heldlr[i])
+      res = ex.get_balances()
+      for c in res['result']:
+        if c['Balance'] >= 0.01:
+          coinb.append(c['Currency'])
+          heldb.append(c['Balance'])
+    else:
+      coinl.append(coinlr[i])
+      heldl.append(heldlr[i])
+
+  ncl = len(coinl)
+  ncb = len(coinb)
+
   if coinl:
     coinvl = get_price(','.join(coinl))
 
@@ -198,7 +222,6 @@ def write_scr(stdscr, wallet, y, x):
       counter = 0
       for coin, val, held in zip(coinl, coinvl, heldl):
         if coinl.index(coin) + 2 < y:
-
           if float(held) > 0.0:
             stdscr.addnstr(coinl.index(coin) + 2, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(2 + counter % 2))
           else:
@@ -216,7 +239,41 @@ def write_scr(stdscr, wallet, y, x):
         total += float(held) * val[0]
         counter += 1
 
-  if y > len(coinl) + 3:
+  if coinb:
+    if y > ncl + 2:
+      stdscr.addnstr(ncl + 2, 0, 'Bittrex', x, curses.color_pair(10))
+    if y > ncl + 3:
+      header = '{:<%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
+      header = header.format(
+        'COIN', 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', '24H LOW', '24H HIGH', '24H CHANGE')
+      stdscr.addnstr(ncl + 3, 0, header, x, curses.color_pair(1))
+    if y > ncl + 4:
+      coinvl = get_price(','.join(coinb))
+      s = sorted(list(zip(coinb, coinvl, heldb)), key=SORT_FNS[SORTS[COLUMN]], reverse=ORDER)
+      coinvl = list(x[1] for x in s)
+      heldb = list(x[2] for x in s)
+      counter = 0
+      for coin, val, held in zip(coinb, coinvl, heldb):
+        if len(coinl) + coinb.index(coin) + 5 < y:
+          if float(held) > 0.0:
+            stdscr.addnstr(ncl + coinb.index(coin) + 4, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(2 + counter % 2))
+          else:
+            stdscr.addnstr(ncl + coinb.index(coin) + 4, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(8 + counter % 2))
+
+          if val[3] > 0:
+            stdscr.addnstr(ncl + coinb.index(coin) + 4, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
+            '  {:>{t6}.2f} %'.format(val[3], t6=sticks[-1]), x, curses.color_pair(4 + counter % 2))
+          elif val[3] < 0:
+            stdscr.addnstr(ncl + coinb.index(coin) + 4, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
+            '  {:>{t6}.2f} %'.format(val[3], t6=sticks[-1]), x, curses.color_pair(6 + counter % 2))
+          else:
+            stdscr.addnstr(ncl + coinb.index(coin) + 4, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
+            '  {:>{t6}.2f} %'.format(val[3], t6=sticks[-1]), x, curses.color_pair(2 + counter % 2))
+        total += float(held) * val[0]
+        counter += 1
+
+
+  if y > ncl + ncb + 4:
     stdscr.addnstr(y - 2, 0, 'Total Holdings: {:10.2f} {}  '
       .format(total, CURRENCY), x, curses.color_pair(1))
     stdscr.addnstr(y - 1, 0,
@@ -262,7 +319,7 @@ def get_string(stdscr, prompt):
   stdscr.addnstr(0, 0, prompt, -1, curses.color_pair(2))
   curses.curs_set(1)
   stdscr.refresh()
-  in_str = stdscr.getstr(1, 0, 20).decode()
+  in_str = stdscr.getstr(1, 0, 250).decode()
   curses.noecho()
   curses.curs_set(0)
   stdscr.clear()
@@ -272,13 +329,16 @@ def get_string(stdscr, prompt):
 
 def add_coin(coin_amount, wallet):
   ''' Add a coin and its amount to the wallet '''
-  coin_amount = coin_amount.upper()
-  if not COIN_FORMAT.match(coin_amount):
-    return wallet
+  if coin_amount.startswith('bittrex:'):
+    coin, amount = coin_amount.split(',')
+  else:
+    coin_amount = coin_amount.upper()
+    if not COIN_FORMAT.match(coin_amount):
+      return wallet
 
-  coin, amount = coin_amount.split(',')
-  if not if_coin(coin):
-    return wallet
+    coin, amount = coin_amount.split(',')
+    if not if_coin(coin):
+      return wallet
 
   wallet[coin] = amount
   return wallet
@@ -320,9 +380,15 @@ def view_ledger(stdscr, ledger, x, y):
   stdscr.erase()
 
   if y >= 1:
-    stdscr.addnstr(0, 0, 'cryptop v0.1.9', x, curses.color_pair(2))
+    stdscr.addnstr(0, 0, ntpath.basename(WALLETFILE), x, curses.color_pair(2))
   if y >= 2:
-    header = '{:<23} {:<12} {:<14} {:<11} {:<17} {:<23} {:>9}'.format(
+    width, _ = terminal_size()
+    width -= 5
+    ticks = [16,5,14,5,14,18,18]
+    scale = max(width / float(sum(ticks)),1.0)
+    ticks = [int(t * scale) for t in ticks]
+    header = '{:<%d} {:<%d} {:<%d} {:<%d} {:<%d} {:<%d} {:>%d}' % tuple(ticks)
+    header = header.format(
       'DATE', 'OUT', 'AMOUNT', 'IN', 'AMOUNT', 'RATE OUT/IN', 'RATE  IN/OUT')
     stdscr.addnstr(1, 0, header, x, curses.color_pair(1))
 
@@ -331,12 +397,17 @@ def view_ledger(stdscr, ledger, x, y):
   transactions = list(ledger.values())
 
   if transactions:
-
     if y > 3:
       counter = 0
+      ticks = [17,10,11,8,12,12,12]
+      #diffs =
+      scale = max(width / float(sum(ticks)),1.0)
+      #scale=1
+      ticks = [int(t * scale) for t in ticks]
+      header = '{:<%d} {:>%d} {:>%d.6f} {:>%d} {:>%d.6f} {:>%d.6f} {}/{} {:>%d.6f} {}/{}' % tuple(ticks)
       for date, transaction in list(zip(dates, transactions)):
         info = transaction.split(',')
-        printme = '{:<15} {:>10} {:>15.6f} {:>10} {:>15.6f} {:>15.6f} {}/{} {:>15.6f} {}/{}'.format(
+        printme = header.format(
           date, info[0], float(info[1]), info[2], float(info[3]),
           float(info[1])/float(info[3]), info[0], info[2],
           float(info[3])/float(info[1]), info[2], info[0])
@@ -448,6 +519,10 @@ def main():
 
   requests_cache.install_cache(cache_name='api_cache', backend='memory',
     expire_after=int(CONFIG['api'].get('cache', 10)))
+
+  global WALLETFILE
+  if len(sys.argv) > 1:
+    WALLETFILE = WALLETFILE = os.path.join(BASEDIR, '%s.json' % sys.argv[1])
 
   curses.wrapper(mainc)
 
