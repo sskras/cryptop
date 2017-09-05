@@ -165,7 +165,10 @@ def terminal_size():
 def scale_ticks(ticks, width):
   total = sum(ticks)
   scale = max(width / float(sum(ticks)),1.0)
-  scale = 1.0
+  #scale = 1.0
+  #f = open('x','a')
+  #print(scale,file=f)
+  #f.close()
   ticks = [int(t * scale) for t in ticks]
   #ticks[-1] = max(ticks[-1] + width - sum(ticks) - int(6 * scale),12)
   return ticks, scale
@@ -174,8 +177,15 @@ def write_scr(stdscr, wallet, y, x):
   '''Write text and formatting to screen'''
   from math import ceil
   width, _ = terminal_size()
+  width -= 7
   hticks, hscale = scale_ticks([5,15,18,18,18,18,15], width)
   sticks, sscale = scale_ticks([5,15,16,16,16,16,12], width)
+
+  ticks = [5,15,18,18,18,18,10]
+  diffs = [0,0,2,2,2,2,4]
+  scale = max(width / float(sum(ticks)),1.0) #* float(sum(ticks)) / float(sum([t+d for t,d in zip(ticks,diffs)]))
+  hticks = [round(t * scale) for t in ticks]
+  sticks = [round(t * scale - d) for t,d in zip(ticks,diffs)]
 
   #sticks=hticks
   #sscale=hscale
@@ -211,8 +221,10 @@ def write_scr(stdscr, wallet, y, x):
 
           if val[3] > 0:
             5 + 16 + 4 * 19
-            stdscr.addnstr(coinl.index(coin) + 2, int(sticks[0] + sticks[1] + sscale + 4*(sticks[3]+sscale*3)),
+            stdscr.addnstr(coinl.index(coin) + 2, int(hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1) ),
             '  {:>{t6}.2f} %'.format(val[3], t6=sticks[-1]), x, curses.color_pair(4 + counter % 2))
+          elif True:
+            pass
           elif val[3] < 0:
             stdscr.addnstr(coinl.index(coin) + 2, sum(sticks[:-1]) + int(6 * sscale),
             '  {:>{t6}.2f} %'.format(val[3], t6=sticks[-1] - 6), x, curses.color_pair(6 + counter % 2))
