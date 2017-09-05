@@ -125,8 +125,9 @@ def conf_scr():
   curses.init_pair(7, getattr(curses, 'COLOR_RED'), 234)
   curses.init_pair(8, 240, -1)
   curses.init_pair(9, 240, 234)
-  curses.init_pair(10, getattr(curses, 'COLOR_YELLOW'), 234)
-  curses.halfdelay(11)
+  curses.init_pair(10, getattr(curses, 'COLOR_YELLOW'), 235)
+  curses.init_pair(11, getattr(curses, 'COLOR_YELLOW'), 234)
+  curses.halfdelay(12)
 
 def str_formatter(coin, val, held, ticks):
   '''Prepare the coin strings as per ini length/decimal place values'''
@@ -171,22 +172,21 @@ def write_scr(stdscr, wallet, y, x):
   from math import ceil
   width, _ = terminal_size()
   width -= 5
-  ticks = [5,15,18,18,18,18,10]
+  ticks = [7,15,18,18,18,18,10]
   diffs = [0,0,2,2,2,2,4]
   scale = max(width / float(sum(ticks)),1.0)
   hticks = [int(t * scale) for t in ticks]
   sticks = [int(t * scale - d) for t,d in zip(ticks,diffs)]
 
   stdscr.erase()
-  if y >= 1:
-    stdscr.addnstr(0, 0, 'Trezor', x, curses.color_pair(10))
-  if y >= 2:
+  if y >= 0:
     header = '{:<%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
     header = header.format(
-      'COIN', 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', '24H LOW', '24H HIGH', '24H CHANGE')
-    stdscr.addnstr(1, 0, header, x, curses.color_pair(1))
+      'TREZOR', 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', '24H LOW', '24H HIGH', '24H CHANGE')
+    stdscr.addnstr(0, 0, header, x, curses.color_pair(1))
 
-  total = 0
+  totall = 0
+  totalb = 0
   coinlr = list(wallet.keys())
   heldlr = list(wallet.values())
   coinl = []
@@ -214,68 +214,72 @@ def write_scr(stdscr, wallet, y, x):
   if coinl:
     coinvl = get_price(','.join(coinl))
 
-    if y > 3:
+    if y > 2:
       s = sorted(list(zip(coinl, coinvl, heldl)), key=SORT_FNS[SORTS[COLUMN]], reverse=ORDER)
       coinl = list(x[0] for x in s)
       coinvl = list(x[1] for x in s)
       heldl = list(x[2] for x in s)
       counter = 0
       for coin, val, held in zip(coinl, coinvl, heldl):
-        if coinl.index(coin) + 2 < y:
+        if coinl.index(coin) + 1 < y:
           if float(held) > 0.0:
-            stdscr.addnstr(coinl.index(coin) + 2, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(2 + counter % 2))
+            stdscr.addnstr(coinl.index(coin) + 1, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(2 + counter % 2))
           else:
-            stdscr.addnstr(coinl.index(coin) + 2, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(8 + counter % 2))
+            stdscr.addnstr(coinl.index(coin) + 1, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(8 + counter % 2))
 
           if val[3] > 0:
-            stdscr.addnstr(coinl.index(coin) + 2, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
+            stdscr.addnstr(coinl.index(coin) + 1, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
             '  {:>{t6}.2f} %'.format(val[3], t6=sticks[-1]), x, curses.color_pair(4 + counter % 2))
           elif val[3] < 0:
-            stdscr.addnstr(coinl.index(coin) + 2, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
+            stdscr.addnstr(coinl.index(coin) + 1, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
             '  {:>{t6}.2f} %'.format(val[3], t6=sticks[-1]), x, curses.color_pair(6 + counter % 2))
           else:
-            stdscr.addnstr(coinl.index(coin) + 2, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
+            stdscr.addnstr(coinl.index(coin) + 1, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
             '  {:>{t6}.2f} %'.format(val[3], t6=sticks[-1]), x, curses.color_pair(2 + counter % 2))
-        total += float(held) * val[0]
+        totall += float(held) * val[0]
         counter += 1
+
+  if y > ncl + 1:
+    stdscr.addnstr(ncl + 1, 0, 'Value: {:10.2f} {}  '
+      .format(totall, CURRENCY), x, curses.color_pair(10))
 
   if coinb:
     if y > ncl + 2:
-      stdscr.addnstr(ncl + 2, 0, 'Bittrex', x, curses.color_pair(10))
-    if y > ncl + 3:
       header = '{:<%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
       header = header.format(
-        'COIN', 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', '24H LOW', '24H HIGH', '24H CHANGE')
-      stdscr.addnstr(ncl + 3, 0, header, x, curses.color_pair(1))
-    if y > ncl + 4:
+        'BITTREX', 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', '24H LOW', '24H HIGH', '24H CHANGE')
+      stdscr.addnstr(ncl + 2, 0, header, x, curses.color_pair(1))
+    if y > ncl + 3:
       coinvl = get_price(','.join(coinb))
       s = sorted(list(zip(coinb, coinvl, heldb)), key=SORT_FNS[SORTS[COLUMN]], reverse=ORDER)
       coinvl = list(x[1] for x in s)
       heldb = list(x[2] for x in s)
       counter = 0
       for coin, val, held in zip(coinb, coinvl, heldb):
-        if len(coinl) + coinb.index(coin) + 5 < y:
+        if len(coinl) + coinb.index(coin) + 4 < y:
           if float(held) > 0.0:
-            stdscr.addnstr(ncl + coinb.index(coin) + 4, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(2 + counter % 2))
+            stdscr.addnstr(ncl + coinb.index(coin) + 3, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(2 + counter % 2))
           else:
-            stdscr.addnstr(ncl + coinb.index(coin) + 4, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(8 + counter % 2))
+            stdscr.addnstr(ncl + coinb.index(coin) + 3, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(8 + counter % 2))
 
           if val[3] > 0:
-            stdscr.addnstr(ncl + coinb.index(coin) + 4, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
+            stdscr.addnstr(ncl + coinb.index(coin) + 3, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
             '  {:>{t6}.2f} %'.format(val[3], t6=sticks[-1]), x, curses.color_pair(4 + counter % 2))
           elif val[3] < 0:
-            stdscr.addnstr(ncl + coinb.index(coin) + 4, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
+            stdscr.addnstr(ncl + coinb.index(coin) + 3, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
             '  {:>{t6}.2f} %'.format(val[3], t6=sticks[-1]), x, curses.color_pair(6 + counter % 2))
           else:
-            stdscr.addnstr(ncl + coinb.index(coin) + 4, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
+            stdscr.addnstr(ncl + coinb.index(coin) + 3, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
             '  {:>{t6}.2f} %'.format(val[3], t6=sticks[-1]), x, curses.color_pair(2 + counter % 2))
-        total += float(held) * val[0]
+        totalb += float(held) * val[0]
         counter += 1
 
 
-  if y > ncl + ncb + 4:
+  if y > ncl + ncb + 3:
+    stdscr.addnstr(ncl + ncb + 3, 0, 'Value: {:10.2f} {}  '
+      .format(totalb, CURRENCY), x, curses.color_pair(10))
     stdscr.addnstr(y - 2, 0, 'Total Holdings: {:10.2f} {}  '
-      .format(total, CURRENCY), x, curses.color_pair(1))
+      .format(totall+totalb, CURRENCY), x, curses.color_pair(11))
     stdscr.addnstr(y - 1, 0,
       '[A] Add coin [R] Remove coin [T] Add transaction [F] Switch FIAT/ETH [V] View ledger [S] Sort [C] Cycle sort [Q] Exit', x,
       curses.color_pair(2))
@@ -400,9 +404,7 @@ def view_ledger(stdscr, ledger, x, y):
     if y > 3:
       counter = 0
       ticks = [17,10,11,8,12,12,12]
-      #diffs =
       scale = max(width / float(sum(ticks)),1.0)
-      #scale=1
       ticks = [int(t * scale) for t in ticks]
       header = '{:<%d} {:>%d} {:>%d.6f} {:>%d} {:>%d.6f} {:>%d.6f} {}/{} {:>%d.6f} {}/{}' % tuple(ticks)
       for date, transaction in list(zip(dates, transactions)):
