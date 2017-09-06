@@ -23,6 +23,7 @@ MARKET_SET = {'getopenorders', 'cancel', 'sellmarket', 'selllimit', 'buymarket',
 
 ACCOUNT_SET = {'getbalances', 'getbalance', 'getdepositaddress', 'getdeposithistory', 'getwithdrawalhistory', 'withdraw', 'getorderhistory'}
 
+balance_time = 0
 
 class Bittrex(object):
     """
@@ -274,7 +275,13 @@ class Bittrex(object):
         :return: Balances info in JSON
         :rtype : dict
         """
-        return self.api_query('getbalances', {})
+        global balance
+        global balance_time
+        if time.time() - balance_time > 30:
+          balance = self.api_query('getbalances', {})
+          balance_time = time.time()
+
+        return balance
 
     def get_balance(self, currency):
         """
