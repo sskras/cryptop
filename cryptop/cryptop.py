@@ -202,7 +202,7 @@ def write_scr(stdscr, wallet, y, x):
       res = ex.get_balances()
       for c in res['result']:
         if c['Balance'] >= 0.01:
-          coinb.append(c['Currency'])
+          coinb.append(c['Currency'].replace('BCC','BCH'))
           heldb.append(c['Balance'])
     else:
       coinl.append(coinlr[i])
@@ -252,11 +252,12 @@ def write_scr(stdscr, wallet, y, x):
     if y > ncl + 3:
       coinvl = get_price(','.join(coinb))
       s = sorted(list(zip(coinb, coinvl, heldb)), key=SORT_FNS[SORTS[COLUMN]], reverse=ORDER)
+      coinb = list(x[0] for x in s)
       coinvl = list(x[1] for x in s)
       heldb = list(x[2] for x in s)
       counter = 0
       for coin, val, held in zip(coinb, coinvl, heldb):
-        if len(coinl) + coinb.index(coin) + 4 < y:
+        if ncl + coinb.index(coin) + 4 < y:
           if float(held) > 0.0:
             stdscr.addnstr(ncl + coinb.index(coin) + 3, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(2 + counter % 2))
           else:
