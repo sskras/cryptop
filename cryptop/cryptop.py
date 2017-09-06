@@ -76,8 +76,9 @@ def if_coin(coin, url='https://www.cryptocompare.com/api/data/coinlist/'):
 def get_price(coin, curr=None):
   '''Get the data on coins'''
   # curr = curr or CONFIG['api'].get('currency', 'USD')
-  global CURRENCY
-  curr = CURRENCY
+  if curr is None:
+    global CURRENCY
+    curr = CURRENCY
   fmt = 'https://min-api.cryptocompare.com/data/pricemultifull?fsyms={}&tsyms={}'
 
   try:
@@ -90,7 +91,6 @@ def get_price(coin, curr=None):
   try:
     data_raw = r.json()['RAW']
     return [(data_raw[c][curr]['PRICE'],
-        data_raw[c][curr]['VOLUME24HOUR'],
         data_raw[c][curr]['MKTCAP'] / 1e6,
         data_raw[c][curr]['CHANGEPCT24HOUR']) for c in coin.split(',')]
   except:
@@ -165,26 +165,26 @@ def str_formatter(coin, val, held, ticks):
   '''Prepare the coin strings as per ini length/decimal place values'''
   global SYMBOL
   ticks = { "t%d" % i : t for i,t in enumerate(ticks) }
-  return '{:<{t0}} {:>{t1}.2f} {:>{t2}.{prec}f} {} {:>{t3}.{prec}f} {} {:>{t4}.2f} {} {:>{t5}.2f}M {}'.format(
+  return '{:<{t0}} {:>{t1}.2f} {:>{t2}.{prec}f} {} {:>{t3}.{prec}f} {} {:>{t5}.2f}M {}'.format(
     coin, float(held), val[0], SYMBOL, float(held)*val[0],
-    SYMBOL, val[1], SYMBOL, val[2], SYMBOL, prec=NROFDECIMALS,**ticks)
+    SYMBOL, val[1], SYMBOL, prec=NROFDECIMALS,**ticks)
 
 def write_scr(stdscr, wallet, y, x):
   '''Write text and formatting to screen'''
   from math import ceil
   width, _ = terminal_size()
   width -= 5
-  ticks = [7,15,15,15,15,15,14]
-  diffs = [0,0,2,2,2,3,3]
+  ticks = [7,15,15,15,15,15]
+  diffs = [0,0,2,2,3,3]
   scale = max(width / float(sum(ticks)),1.0)
   hticks = [int(t * scale) for t in ticks]
   sticks = [int(t * scale - d) for t,d in zip(ticks,diffs)]
 
   stdscr.erase()
   if y >= 0:
-    header = '{:<%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
+    header = '{:<%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
     header = header.format(
-      'TREZOR', 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', 'MARKET CAP', 'VOLUME', '24H CHANGE')
+      'TREZOR', 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', 'MARKET CAP', '24H CHANGE')
     stdscr.addnstr(0, 0, header, x, curses.color_pair(1))
 
   totall = 0
@@ -229,15 +229,15 @@ def write_scr(stdscr, wallet, y, x):
           else:
             stdscr.addnstr(coinl.index(coin) + 1, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(8 + counter % 2))
 
-          if val[3] > 0:
-            stdscr.addnstr(coinl.index(coin) + 1, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
-            '  {:>{t6}.2f} %'.format(val[3], t6=sticks[-1]), x, curses.color_pair(4 + counter % 2))
-          elif val[3] < 0:
-            stdscr.addnstr(coinl.index(coin) + 1, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
-            '  {:>{t6}.2f} %'.format(val[3], t6=sticks[-1]), x, curses.color_pair(6 + counter % 2))
+          if val[2] > 0:
+            stdscr.addnstr(coinl.index(coin) + 1, hticks[0] + hticks[1] + 1 + 3*(hticks[2]+1),
+            '  {:>{t6}.2f} %'.format(val[2], t6=sticks[-1]), x, curses.color_pair(4 + counter % 2))
+          elif val[2] < 0:
+            stdscr.addnstr(coinl.index(coin) + 1, hticks[0] + hticks[1] + 1 + 3*(hticks[2]+1),
+            '  {:>{t6}.2f} %'.format(val[2], t6=sticks[-1]), x, curses.color_pair(6 + counter % 2))
           else:
-            stdscr.addnstr(coinl.index(coin) + 1, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
-            '  {:>{t6}.2f} %'.format(val[3], t6=sticks[-1]), x, curses.color_pair(2 + counter % 2))
+            stdscr.addnstr(coinl.index(coin) + 1, hticks[0] + hticks[1] + 1 + 3*(hticks[2]+1),
+            '  {:>{t6}.2f} %'.format(val[2], t6=sticks[-1]), x, curses.color_pair(2 + counter % 2))
         totall += float(held) * val[0]
         counter += 1
 
@@ -247,9 +247,9 @@ def write_scr(stdscr, wallet, y, x):
 
   if coinb:
     if y > ncl + 2:
-      header = '{:<%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
+      header = '{:<%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
       header = header.format(
-        'BITTREX', 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', 'MARKET CAP', 'VOLUME', '24H CHANGE')
+        'BITTREX', 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', 'MARKET CAP', '24H CHANGE')
       stdscr.addnstr(ncl + 2, 0, header, x, curses.color_pair(1))
     if y > ncl + 3:
       coinvl = get_price(','.join(coinb))
@@ -265,15 +265,15 @@ def write_scr(stdscr, wallet, y, x):
           else:
             stdscr.addnstr(ncl + coinb.index(coin) + 3, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(8 + counter % 2))
 
-          if val[3] > 0:
-            stdscr.addnstr(ncl + coinb.index(coin) + 3, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
-            '  {:>{t6}.2f} %'.format(val[3], t6=sticks[-1]), x, curses.color_pair(4 + counter % 2))
-          elif val[3] < 0:
-            stdscr.addnstr(ncl + coinb.index(coin) + 3, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
-            '  {:>{t6}.2f} %'.format(val[3], t6=sticks[-1]), x, curses.color_pair(6 + counter % 2))
+          if val[2] > 0:
+            stdscr.addnstr(ncl + coinb.index(coin) + 3, hticks[0] + hticks[1] + 1 + 3*(hticks[2]+1),
+            '  {:>{t6}.2f} %'.format(val[2], t6=sticks[-1]), x, curses.color_pair(4 + counter % 2))
+          elif val[2] < 0:
+            stdscr.addnstr(ncl + coinb.index(coin) + 3, hticks[0] + hticks[1] + 1 + 3*(hticks[2]+1),
+            '  {:>{t6}.2f} %'.format(val[2], t6=sticks[-1]), x, curses.color_pair(6 + counter % 2))
           else:
-            stdscr.addnstr(ncl + coinb.index(coin) + 3, hticks[0] + hticks[1] + 1 + 4*(hticks[2]+1),
-            '  {:>{t6}.2f} %'.format(val[3], t6=sticks[-1]), x, curses.color_pair(2 + counter % 2))
+            stdscr.addnstr(ncl + coinb.index(coin) + 3, hticks[0] + hticks[1] + 1 + 3*(hticks[2]+1),
+            '  {:>{t6}.2f} %'.format(val[2], t6=sticks[-1]), x, curses.color_pair(2 + counter % 2))
         totalb += float(held) * val[0]
         counter += 1
 
