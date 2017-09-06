@@ -2,6 +2,7 @@ import curses
 import os
 import sys
 import re
+import time
 import shutil
 import ntpath
 import configparser
@@ -82,13 +83,15 @@ def get_price(coin, curr=None):
   try:
     r = requests.get(fmt.format(coin, curr))
   except requests.exceptions.RequestException:
+    time.sleep(2)
+    return get_price(coin,curr)
     sys.exit('Could not complete request')
 
   try:
     data_raw = r.json()['RAW']
     return [(data_raw[c][curr]['PRICE'],
-        data_raw[c][curr]['LOW24HOUR'],
-        data_raw[c][curr]['HIGH24HOUR'],
+        data_raw[c][curr]['VOLUME24HOUR'],
+        data_raw[c][curr]['MKTCAP'] / 1e6,
         data_raw[c][curr]['CHANGEPCT24HOUR']) for c in coin.split(',')]
   except:
     sys.exit('Could not parse data')
@@ -129,14 +132,6 @@ def conf_scr():
   curses.init_pair(11, getattr(curses, 'COLOR_YELLOW'), 234)
   curses.halfdelay(12)
 
-def str_formatter(coin, val, held, ticks):
-  '''Prepare the coin strings as per ini length/decimal place values'''
-  global SYMBOL
-  ticks = { "t%d" % i : t for i,t in enumerate(ticks) }
-  return '{:<{t0}} {:>{t1}.2f} {:>{t2}.{prec}f} {} {:>{t3}.{prec}f} {} {:>{t4}.{prec}f} {} {:>{t5}.{prec}f} {}'.format(
-    coin, float(held), val[0], SYMBOL, float(held)*val[0],
-    SYMBOL, val[1], SYMBOL, val[2], SYMBOL, prec=NROFDECIMALS,**ticks)
-
 def terminal_size():
   import os, sys, io
   if not hasattr(sys.stdout, "fileno"):
@@ -166,14 +161,21 @@ def terminal_size():
     cr = (env.get('LINES', 25), env.get('COLUMNS', 80))
   return int(cr[1]), int(cr[0])
 
+def str_formatter(coin, val, held, ticks):
+  '''Prepare the coin strings as per ini length/decimal place values'''
+  global SYMBOL
+  ticks = { "t%d" % i : t for i,t in enumerate(ticks) }
+  return '{:<{t0}} {:>{t1}.2f} {:>{t2}.{prec}f} {} {:>{t3}.{prec}f} {} {:>{t4}.2f} {} {:>{t5}.2f}M {}'.format(
+    coin, float(held), val[0], SYMBOL, float(held)*val[0],
+    SYMBOL, val[1], SYMBOL, val[2], SYMBOL, prec=NROFDECIMALS,**ticks)
 
 def write_scr(stdscr, wallet, y, x):
   '''Write text and formatting to screen'''
   from math import ceil
   width, _ = terminal_size()
   width -= 5
-  ticks = [7,15,18,18,18,18,10]
-  diffs = [0,0,2,2,2,2,4]
+  ticks = [7,15,15,15,15,15,14]
+  diffs = [0,0,2,2,2,3,3]
   scale = max(width / float(sum(ticks)),1.0)
   hticks = [int(t * scale) for t in ticks]
   sticks = [int(t * scale - d) for t,d in zip(ticks,diffs)]
@@ -182,7 +184,7 @@ def write_scr(stdscr, wallet, y, x):
   if y >= 0:
     header = '{:<%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
     header = header.format(
-      'TREZOR', 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', '24H LOW', '24H HIGH', '24H CHANGE')
+      'TREZOR', 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', 'MARKET CAP', 'VOLUME', '24H CHANGE')
     stdscr.addnstr(0, 0, header, x, curses.color_pair(1))
 
   totall = 0
@@ -247,7 +249,7 @@ def write_scr(stdscr, wallet, y, x):
     if y > ncl + 2:
       header = '{:<%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
       header = header.format(
-        'BITTREX', 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', '24H LOW', '24H HIGH', '24H CHANGE')
+        'BITTREX', 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', 'MARKET CAP', 'VOLUME', '24H CHANGE')
       stdscr.addnstr(ncl + 2, 0, header, x, curses.color_pair(1))
     if y > ncl + 3:
       coinvl = get_price(','.join(coinb))
