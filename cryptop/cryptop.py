@@ -3,6 +3,15 @@ import os
 import sys
 import re
 import time
+import hmac
+import hashlib
+try:
+    from urllib import urlencode
+    from urlparse import urljoin
+except ImportError:
+    from urllib.parse import urlencode
+    from urllib.parse import urljoin
+import requests
 import shutil
 import ntpath
 import configparser
@@ -38,6 +47,7 @@ SYMBOLLIST = ['€','Ξ','Ƀ']
 CURRENCYCOUNTER = 0
 CURRENCY = FIAT
 NROFDECIMALS = 2
+BALANCE_TIME = 0
 
 KEY_ESCAPE = 27
 KEY_ZERO = 48
@@ -199,10 +209,22 @@ def write_scr(stdscr, wallet, y, x):
 
   for i in range(len(coinlr)):
     if coinlr[i].startswith('bittrex:'):
-      from bittrex import Bittrex
-      ex = Bittrex(coinlr[i].split(':')[1],heldlr[i])
-      res = ex.get_balances()
-      for c in res['result']:
+      nonce = str(int(time.time() * 1000))
+      url = "https://bittrex.com/api/v1.1/account/getbalances?apikey=%s&nonce=%s&" % (coinlr[i].split(':')[1], nonce)
+      global balance
+      global BALANCE_TIME
+      if time.time() - BALANCE_TIME > 60:
+        try:
+          ret = requests.get(
+              url,
+              headers={"apisign": hmac.new(heldlr[i].encode(), url.encode(), hashlib.sha512).hexdigest()},
+              timeout=5
+          ).json()
+          balance = ret
+          BALANCE_TIME = time.time()
+        except requests.exceptions.ReadTimeout:
+          time.sleep(10)
+      for c in balance['result']:
         if c['Balance'] >= 0.01:
           coinb.append(c['Currency'].replace('BCC','BCH'))
           heldb.append(c['Balance'])
