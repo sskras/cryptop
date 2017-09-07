@@ -63,10 +63,15 @@ class Bittrex(object):
 
         request_url += urlencode(options)
 
-        return requests.get(
-            request_url,
-            headers={"apisign": hmac.new(self.api_secret.encode(), request_url.encode(), hashlib.sha512).hexdigest()}
-        ).json()
+        try:
+          return requests.get(
+              request_url,
+              headers={"apisign": hmac.new(self.api_secret.encode(), request_url.encode(), hashlib.sha512).hexdigest()},
+              timeout=5
+          ).json()
+        except requests.exceptions.ReadTimeout:
+          time.sleep(10)
+          return None
 
     def get_markets(self):
         """
@@ -277,9 +282,11 @@ class Bittrex(object):
         """
         global balance
         global balance_time
-        if time.time() - balance_time > 30:
-          balance = self.api_query('getbalances', {})
-          balance_time = time.time()
+        if time.time() - balance_time > 60:
+          ret = self.api_query('getbalances', {})
+          if ret is not None:
+            balance = ret
+            balance_time = time.time()
 
         return balance
 
