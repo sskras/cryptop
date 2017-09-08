@@ -149,8 +149,9 @@ def get_erc20_balance(token, address):
       etherscan_conn.request("GET", "/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address, {}, {})
       data = etherscan_conn.getresponse()
       data = json.loads(data.read().decode())
-      tokens[address][token]['balance'] = float(data['result']) / 1e18
-      tokens[address][token]['eth_balance'] = float(data['result']) / 1e18
+      if 'result' in data and data['result']:
+        tokens[address][token]['balance'] = float(data['result']) / 1e18
+        tokens[address][token]['eth_balance'] = float(data['result']) / 1e18
     else:
       conn = http.client.HTTPSConnection("etherscan.io")
       conn.request("GET", "/tokens?q="+token.lower(), {}, {})
@@ -169,9 +170,8 @@ def get_erc20_balance(token, address):
       conn = http.client.HTTPSConnection("api.tokenbalance.com")
       conn.request("GET", "/token/%s/%s" % (contract,address), {}, {})
       ret = json.loads(conn.getresponse().read().decode())
-
       tokens[address][token].update(ret)
-      
+
   return tokens[address][token]['balance'],tokens[address][token]['eth_balance']
 
 
