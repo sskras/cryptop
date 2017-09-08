@@ -144,36 +144,37 @@ def get_erc20_balance(token, address):
   if time.time() - tokens[address][token]['time'] > 60:
     tokens[address][token]['time'] = time.time()
 
-    if token.lower() ==  'eth':
-      etherscan_conn = http.client.HTTPSConnection("api.etherscan.io")
-      etherscan_conn.request("GET", "/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address, {}, {})
-      data = etherscan_conn.getresponse()
-      data = json.loads(data.read().decode())
-      if 'result' in data and data['result']:
-        tokens[address][token]['balance'] = float(data['result']) / 1e18
-        tokens[address][token]['eth_balance'] = float(data['result']) / 1e18
-    else:
-      conn = http.client.HTTPSConnection("etherscan.io")
-      conn.request("GET", "/tokens?q="+token.lower(), {}, {})
-      res = conn.getresponse()
-      data = res.read()
-      data = str(data)
+    try:
+      if token.lower() ==  'eth':
+        etherscan_conn = http.client.HTTPSConnection("api.etherscan.io")
+        etherscan_conn.request("GET", "/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address, {}, {})
+        data = etherscan_conn.getresponse()
+        data = json.loads(data.read().decode())
+        if 'result' in data and data['result']:
+          tokens[address][token]['balance'] = float(data['result']) / 1e18
+          tokens[address][token]['eth_balance'] = float(data['result']) / 1e18
+      else:
+        conn = http.client.HTTPSConnection("etherscan.io")
+        conn.request("GET", "/tokens?q="+token.lower(), {}, {})
+        res = conn.getresponse()
+        data = res.read()
+        data = str(data)
 
-      end = 0
-      nth = 1
-      if token == 'MTH': # three options on etherscan
-        nth = 2
-      for i in range(nth):
-        start = data.find('<a href="/token/', end) + len('<a href="/token/')
-        end = data.find('\"',start)
-      contract = data[start:end]
-      try:
+        end = 0
+        nth = 1
+        if token == 'MTH': # three options on etherscan
+          nth = 2
+        for i in range(nth):
+          start = data.find('<a href="/token/', end) + len('<a href="/token/')
+          end = data.find('\"',start)
+        contract = data[start:end]
+
         conn = http.client.HTTPSConnection("api.tokenbalance.com")
         conn.request("GET", "/token/%s/%s" % (contract,address), {}, {})
         ret = json.loads(conn.getresponse().read().decode())
         tokens[address][token].update(ret)
-      except:
-        pass
+    except:
+      pass
 
   return tokens[address][token]['balance'],tokens[address][token]['eth_balance']
 
