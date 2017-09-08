@@ -83,6 +83,91 @@ def if_coin(coin, url='https://www.cryptocompare.com/api/data/coinlist/'):
   return coin in requests.get(url).json()['Data']
 
 
+erc20_block = {}
+erc20_contracts = set([])
+erc20 = {}
+def update_erc20_balance(address): # doesn't catch OMG :(
+  import http.client
+  import json
+  import time
+  global erc20_time, erc20_block, erc20, erc20_contracts
+
+  def er(method, default):
+    try:
+      etherscan_conn = http.client.HTTPSConnection("api.etherscan.io")
+      etherscan_conn.request("GET", method, {}, {})
+      data = etherscan_conn.getresponse()
+      data = json.loads(data.read().decode())
+      if 'result' in data.keys():
+        return data['result']
+      return default
+    except:
+      return default
+
+  if not address in erc20:
+    erc20[address] = {'ETH' : 0}
+    erc20_block[address] = 0
+
+  current_block = int(er("/api?module=proxy&action=eth_blockNumber&apikey=", "0xFFFFF"),0)
+  if current_block - erc20_block[address] >= 10:
+    erc20[address]['ETH'] = float(er("/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address, 0)) / 1e18
+    transactions = er("/api?module=account&action=txlist&address=%s&startblock=%d&endblock=%d&sort=asc&apikey=" % (address,erc20_block[address],current_block),[])
+    erc20_block[address] = current_block
+    erc20_contracts = set(list(erc20_contracts) + [tx['to'] for tx in transactions if tx['to'] != address])
+    erc20_contracts = set(list(erc20_contracts) + [tx['contractAddress'] for tx in transactions if tx['contractAddress'] != ''])
+    conn = http.client.HTTPSConnection("api.tokenbalance.com")
+    for tok in erc20_contracts:
+      conn.request("GET", "/token/%s/%s" % (tok,address), {}, {})
+      res = conn.getresponse()
+      data = json.loads(res.read().decode())
+      if 'symbol' in data.keys():
+        try:
+          conn.request("GET", "/balance/%s/%s" % (tok,address), {}, {})
+          res = conn.getresponse()
+          balance = json.loads(res.read().decode())
+        except:
+          continue
+        if balance > 0:
+          erc20[address][data['symbol']] = balance
+
+tokens = {}
+def get_erc20_balance(token, address):
+  import http.client
+  import json
+
+  global tokens
+  if not token in tokens:
+    tokens[token] = { 'balance' : 0, 'eth_balance' : 0, 'time' : 0}
+
+  if time.time() - tokens[token]['time'] > 60:
+    tokens[token]['time'] = time.time()
+
+    if token.lower() ==  'eth':
+      etherscan_conn = http.client.HTTPSConnection("api.etherscan.io")
+      etherscan_conn.request("GET", "/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address, {}, {})
+      data = etherscan_conn.getresponse()
+      data = json.loads(data.read().decode())
+      tokens[token]['balance'] = float(data['result']) / 1e18
+      tokens[token]['eth_balance'] = float(data['result']) / 1e18
+    else:
+      conn = http.client.HTTPSConnection("etherscan.io")
+      conn.request("GET", "/tokens?q="+token.lower(), {}, {})
+      res = conn.getresponse()
+      data = res.read()
+      data = str(data)
+
+      start = data.find('<a href="/token/') + len('<a href="/token/')
+      end = data.find('\"',start)
+      contract = data[start:end]
+      conn = http.client.HTTPSConnection("api.tokenbalance.com")
+      conn.request("GET", "/token/%s/%s" % (contract,address), {}, {})
+      ret = json.loads(conn.getresponse().read().decode())
+
+      tokens[token].update(ret)
+
+  return tokens[token]['balance'],tokens[token]['eth_balance']
+
+
 def get_price(coin, curr=None):
   '''Get the data on coins'''
   # curr = curr or CONFIG['api'].get('currency', 'USD')
@@ -224,10 +309,18 @@ def write_scr(stdscr, wallet, y, x):
           BALANCE_TIME = time.time()
         except requests.exceptions.ReadTimeout:
           time.sleep(10)
+          continue
       for c in balance['result']:
         if c['Balance'] >= 0.01:
           coinb.append(c['Currency'].replace('BCC','BCH'))
           heldb.append(c['Balance'])
+    elif str(heldlr[i]).startswith('0x'):
+      coinl.append(coinlr[i])
+      tok_balance, eth_balance = get_erc20_balance(coinlr[i], heldlr[i])
+      heldl.append(tok_balance)
+      if not 'ETH' in coinlr and not 'ETH' in coinl:
+        coinl.append('ETH')
+        heldl.append(eth_balance)
     else:
       coinl.append(coinlr[i])
       heldl.append(heldlr[i])
@@ -358,19 +451,22 @@ def get_string(stdscr, prompt):
 
 def add_coin(coin_amount, wallet):
   ''' Add a coin and its amount to the wallet '''
-  if coin_amount.startswith('bittrex:'):
+  if coin_amount.split(',')[-1].startswith('0x'):
+    coin, amount = coin_amount.split(',')
+    coin = coin.upper()
+  elif coin_amount.startswith('bittrex:'):
     coin, amount = coin_amount.split(',')
   else:
     coin_amount = coin_amount.upper()
     if not COIN_FORMAT.match(coin_amount):
       return wallet
-
     coin, amount = coin_amount.split(',')
     if not if_coin(coin):
       return wallet
 
   wallet[coin] = amount
   return wallet
+
 
 def add_transaction(transaction, wallet, ledger):
   ''' Add a transaction to ledger and update wallet accordingly '''
