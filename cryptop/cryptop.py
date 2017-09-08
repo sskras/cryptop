@@ -167,10 +167,13 @@ def get_erc20_balance(token, address):
         start = data.find('<a href="/token/', end) + len('<a href="/token/')
         end = data.find('\"',start)
       contract = data[start:end]
-      conn = http.client.HTTPSConnection("api.tokenbalance.com")
-      conn.request("GET", "/token/%s/%s" % (contract,address), {}, {})
-      ret = json.loads(conn.getresponse().read().decode())
-      tokens[address][token].update(ret)
+      try:
+        conn = http.client.HTTPSConnection("api.tokenbalance.com")
+        conn.request("GET", "/token/%s/%s" % (contract,address), {}, {})
+        ret = json.loads(conn.getresponse().read().decode())
+        tokens[address][token].update(ret)
+      except:
+        pass
 
   return tokens[address][token]['balance'],tokens[address][token]['eth_balance']
 
@@ -217,21 +220,22 @@ def get_theme_colors():
 
 def conf_scr():
   '''Configure the screen and colors/etc'''
+  stripe = 235
   curses.curs_set(0)
   curses.start_color()
   curses.use_default_colors()
   text, banner, banner_text, background = get_theme_colors()
   curses.init_pair(1, banner_text, banner)
   curses.init_pair(2, text, -1)
-  curses.init_pair(3, text, 234)
+  curses.init_pair(3, text, stripe)
   curses.init_pair(4, getattr(curses, 'COLOR_GREEN'), -1)
-  curses.init_pair(5, getattr(curses, 'COLOR_GREEN'), 234)
+  curses.init_pair(5, getattr(curses, 'COLOR_GREEN'), stripe)
   curses.init_pair(6, getattr(curses, 'COLOR_RED'), -1)
-  curses.init_pair(7, getattr(curses, 'COLOR_RED'), 234)
+  curses.init_pair(7, getattr(curses, 'COLOR_RED'), stripe)
   curses.init_pair(8, 240, -1)
-  curses.init_pair(9, 240, 234)
-  curses.init_pair(10, getattr(curses, 'COLOR_YELLOW'), 235)
-  curses.init_pair(11, getattr(curses, 'COLOR_YELLOW'), 234)
+  curses.init_pair(9, 240, stripe)
+  curses.init_pair(10, getattr(curses, 'COLOR_YELLOW'), stripe)
+  curses.init_pair(11, getattr(curses, 'COLOR_YELLOW'), stripe)
   curses.halfdelay(12)
 
 def terminal_size():
