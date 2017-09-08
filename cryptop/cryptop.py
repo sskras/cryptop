@@ -136,19 +136,21 @@ def get_erc20_balance(token, address):
   import json
 
   global tokens
-  if not token in tokens:
-    tokens[token] = { 'balance' : 0, 'eth_balance' : 0, 'time' : 0}
+  if not address in tokens:
+    tokens[address] = {}
+  if not token in tokens[address]:
+    tokens[address][token] = { 'balance' : 0, 'eth_balance' : 0, 'time' : 0 }
 
-  if time.time() - tokens[token]['time'] > 60:
-    tokens[token]['time'] = time.time()
+  if time.time() - tokens[address][token]['time'] > 60:
+    tokens[address][token]['time'] = time.time()
 
     if token.lower() ==  'eth':
       etherscan_conn = http.client.HTTPSConnection("api.etherscan.io")
       etherscan_conn.request("GET", "/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address, {}, {})
       data = etherscan_conn.getresponse()
       data = json.loads(data.read().decode())
-      tokens[token]['balance'] = float(data['result']) / 1e18
-      tokens[token]['eth_balance'] = float(data['result']) / 1e18
+      tokens[address][token]['balance'] = float(data['result']) / 1e18
+      tokens[address][token]['eth_balance'] = float(data['result']) / 1e18
     else:
       conn = http.client.HTTPSConnection("etherscan.io")
       conn.request("GET", "/tokens?q="+token.lower(), {}, {})
@@ -156,16 +158,21 @@ def get_erc20_balance(token, address):
       data = res.read()
       data = str(data)
 
-      start = data.find('<a href="/token/') + len('<a href="/token/')
-      end = data.find('\"',start)
+      end = 0
+      nth = 1
+      if token == 'MTH': # three options on etherscan
+        nth = 2
+      for i in range(nth):
+        start = data.find('<a href="/token/', end) + len('<a href="/token/')
+        end = data.find('\"',start)
       contract = data[start:end]
       conn = http.client.HTTPSConnection("api.tokenbalance.com")
       conn.request("GET", "/token/%s/%s" % (contract,address), {}, {})
       ret = json.loads(conn.getresponse().read().decode())
 
-      tokens[token].update(ret)
-
-  return tokens[token]['balance'],tokens[token]['eth_balance']
+      tokens[address][token].update(ret)
+      
+  return tokens[address][token]['balance'],tokens[address][token]['eth_balance']
 
 
 def get_price(coin, curr=None):
