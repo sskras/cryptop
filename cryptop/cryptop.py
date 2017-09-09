@@ -326,7 +326,7 @@ def write_scr(stdscr, wallet, y, x):
         if c['Balance'] >= 0.01:
           coinb.append(c['Currency'].replace('BCC','BCH'))
           heldb.append(c['Balance'])
-    elif str(heldlr[i]).lower().startswith('0x'):
+    elif str(heldlr[i]).lower().strip().startswith('0x'):
       coinl.append(coinlr[i])
       tok_balance, eth_balance = get_erc20_balance(coinlr[i], heldlr[i])
       heldl.append(tok_balance)
@@ -463,7 +463,7 @@ def get_string(stdscr, prompt):
 
 def add_coin(coin_amount, wallet):
   ''' Add a coin and its amount to the wallet '''
-  if coin_amount.split(',')[-1].lower().startswith('0x'):
+  if coin_amount.split(',')[-1].lower().strip().startswith('0x'):
     coin, amount = coin_amount.split(',')
     coin = coin.upper()
   elif coin_amount.startswith('bittrex:'):
