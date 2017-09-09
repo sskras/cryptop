@@ -319,7 +319,7 @@ def write_scr(stdscr, wallet, y, x):
           ).json()
           balance = ret
           BALANCE_TIME = time.time()
-        except requests.exceptions.ReadTimeout:
+        except:
           time.sleep(10)
           continue
       for c in balance['result']:
