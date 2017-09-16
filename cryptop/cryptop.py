@@ -357,8 +357,6 @@ def write_scr(stdscr, wallet, y, x):
           else:
             stdscr.addnstr(coinl.index(coin) + 1, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(8 + counter % 2))
 
-          if val[2] is None:
-            assert False, str(coin) + " " + str(val) + " " + str(held)
           if val[2] > 0:
             stdscr.addnstr(coinl.index(coin) + 1, hticks[0] + hticks[1] + 1 + 3*(hticks[2]+1),
             '  {:>{t6}.2f} %'.format(val[2], t6=sticks[-1]), x, curses.color_pair(4 + counter % 2))
