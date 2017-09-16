@@ -143,7 +143,6 @@ def get_erc20_balance(token, address):
 
   if time.time() - tokens[address][token]['time'] > 60:
     tokens[address][token]['time'] = time.time()
-
     try:
       if token.lower() ==  'eth':
         etherscan_conn = http.client.HTTPSConnection("api.etherscan.io")
@@ -165,13 +164,15 @@ def get_erc20_balance(token, address):
         if token == 'MTH': # three options on etherscan
           nth = 2
         for i in range(nth):
-          start = data.find('<a href="/token/', end) + len('<a href="/token/')
-          end = data.find('\"',start)
+          start = data.find('/token/', end) + len('/token/')
+          end = data.find('>',start) - 2
         contract = data[start:end]
+        #assert False, "|"+contract+"|"+token
 
         conn = http.client.HTTPSConnection("api.tokenbalance.com")
         conn.request("GET", "/token/%s/%s" % (contract,address), {}, {})
-        ret = json.loads(conn.getresponse().read().decode())
+        ret = conn.getresponse().read().decode()
+        ret = json.loads(ret)
         tokens[address][token].update(ret)
     except:
       pass
@@ -328,7 +329,7 @@ def write_scr(stdscr, wallet, y, x):
           heldb.append(c['Balance'])
     elif str(heldlr[i]).lower().strip().startswith('0x'):
       coinl.append(coinlr[i])
-      tok_balance, eth_balance = get_erc20_balance(coinlr[i], heldlr[i])
+      tok_balance, eth_balance = get_erc20_balance(coinlr[i], heldlr[i].lower().strip())
       heldl.append(tok_balance)
       if not 'ETH' in coinlr and not 'ETH' in coinl:
         coinl.append('ETH')
