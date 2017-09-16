@@ -167,7 +167,6 @@ def get_erc20_balance(token, address):
           start = data.find('/token/', end) + len('/token/')
           end = data.find('>',start) - 2
         contract = data[start:end]
-        #assert False, "|"+contract+"|"+token
 
         conn = http.client.HTTPSConnection("api.tokenbalance.com")
         conn.request("GET", "/token/%s/%s" % (contract,address), {}, {})
@@ -197,9 +196,10 @@ def get_price(coin, curr=None):
 
   try:
     data_raw = r.json()['RAW']
-    return [(data_raw[c][curr]['PRICE'],
+    ret = [(data_raw[c][curr]['PRICE'],
         data_raw[c][curr]['MKTCAP'] / 1e6,
-        data_raw[c][curr]['CHANGEPCT24HOUR']) for c in coin.split(',')]
+        data_raw[c][curr]['CHANGEPCT24HOUR'] or 0.0) for c in coin.split(',')]
+    return ret
   except:
     sys.exit('Could not parse data')
 
@@ -321,7 +321,7 @@ def write_scr(stdscr, wallet, y, x):
           balance = ret
           BALANCE_TIME = time.time()
         except:
-          time.sleep(10)
+          time.sleep(5)
           continue
       for c in balance['result']:
         if c['Balance'] >= 0.01:
@@ -357,6 +357,8 @@ def write_scr(stdscr, wallet, y, x):
           else:
             stdscr.addnstr(coinl.index(coin) + 1, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(8 + counter % 2))
 
+          if val[2] is None:
+            assert False, str(coin) + " " + str(val) + " " + str(held)
           if val[2] > 0:
             stdscr.addnstr(coinl.index(coin) + 1, hticks[0] + hticks[1] + 1 + 3*(hticks[2]+1),
             '  {:>{t6}.2f} %'.format(val[2], t6=sticks[-1]), x, curses.color_pair(4 + counter % 2))
