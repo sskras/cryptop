@@ -161,10 +161,8 @@ def get_erc20_balance(token, address):
 
         end = 0
         nth = 1
-        if token == 'LINK': # three options on etherscan
+        if token == 'LINK':
           nth = 5
-        if token == 'MTH': # three options on etherscan
-          nth = 2
         for i in range(nth):
           start = data.find('/token/', end) + len('/token/')
           end = data.find('>',start) - 2
