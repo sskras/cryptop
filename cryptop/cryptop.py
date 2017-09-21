@@ -273,7 +273,7 @@ def str_formatter(coin, val, held, ticks):
   '''Prepare the coin strings as per ini length/decimal place values'''
   global SYMBOL
   ticks = { "t%d" % i : t for i,t in enumerate(ticks) }
-  return '{:<{t0}} {:>{t1}.2f} {:>{t2}.{prec}f} {} {:>{t3}.{prec}f} {} {:>{t5}.2f}M {}'.format(
+  return '{:<{t0}} {:>{t1}.2f} {:>{t2}.{prec}f} {} {:>{t3}.{prec}f} {} {:>{t5}.3f}M {}'.format(
     coin, float(held), val[0], SYMBOL, float(held)*val[0],
     SYMBOL, val[1], SYMBOL, prec=NROFDECIMALS,**ticks)
 
