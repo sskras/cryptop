@@ -161,8 +161,8 @@ def get_erc20_balance(token, address):
 
         end = 0
         nth = 1
-        if token == 'LINK':
-          nth = 5
+        #if token == 'LINK':
+        #  nth = 5
         for i in range(nth):
           start = data.find('/token/', end) + len('/token/')
           end = data.find('>',start) - 2
