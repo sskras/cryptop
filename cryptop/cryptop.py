@@ -187,13 +187,13 @@ def get_ethereum(address):
     tokens[address] = {'.' : 0}
 
   if time.time() - tokens[address]['.'] > 60:
-	  conn = http.client.HTTPSConnection("api.ethplorer.io")
-	  conn.request('GET', '/getAddressInfo/%s?apiKey=freekey' % address)
-	  data = json.loads(conn.getresponse().read().decode())
-  	tokens[address] = {'.' : time.time(), 'ETH':data['ETH']['balance']}
-  	for tok in data['tokens']:
-   	 tokens[address][tok['tokenInfo']['symbol']] = tok['balance'] / 10**tok['tokenInfo']['decimals']
-	  return tokens
+    conn = http.client.HTTPSConnection("api.ethplorer.io")
+    conn.request('GET', '/getAddressInfo/%s?apiKey=freekey' % address)
+    data = json.loads(conn.getresponse().read().decode())
+    tokens[address] = {'.' : time.time(), 'ETH':data['ETH']['balance']}
+    for tok in data['tokens']:
+      tokens[address][tok['tokenInfo']['symbol']] = tok['balance'] / 10**int(tok['tokenInfo']['decimals'])
+  return tokens
 
 def get_price(coin, curr=None):
   '''Get the data on coins'''
@@ -344,11 +344,13 @@ def write_scr(stdscr, wallet, y, x):
           coinb.append(c['Currency'].replace('BCC','BCH'))
           heldb.append(c['Balance'])
     elif str(coinlr[i]).lower().strip().startswith('0x'):
-      tokens = get_ethereum(str(coinlr[i]).lower().strip())
-      for tok in tokens.keys():
+      address = str(coinlr[i]).lower().strip()
+      tokens = get_ethereum(address)
+      for tok in tokens[address].keys():
         if tok != '.':
           coinl.append(tok)
-          heldl.append(tokes[tok])
+          heldl.append(tokens[address][tok])
+          #assert False, str(tok) + " " + str(tokens[tok])
     elif str(heldlr[i]).lower().strip().startswith('0x'):
       coinl.append(coinlr[i])
       tok_balance, eth_balance = get_erc20_balance(coinlr[i], heldlr[i].lower().strip())
@@ -534,7 +536,7 @@ def remove_coin(coin, wallet):
   ''' Remove a coin and its amount from the wallet '''
   # coin = '' if window is resized while waiting for string
   if coin:
-    coin = coin.upper()
+    coin = coin.lower()
     wallet.pop(coin, None)
   return wallet
 
