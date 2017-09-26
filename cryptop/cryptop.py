@@ -187,13 +187,13 @@ def get_ethereum(address):
     tokens[address] = {'.' : 0}
 
   if time.time() - tokens[address]['.'] > 60:
-	  conn = http.client.HTTPSConnection("api.ethplorer.io")
-	  conn.request('GET', '/getAddressInfo/%s?apiKey=freekey' % address)
-	  data = json.loads(conn.getresponse().read().decode())
-  	tokens[address] = {'.' : time.time(), 'ETH':data['ETH']['balance']}
-  	for tok in data['tokens']:
-   	 tokens[address][tok['tokenInfo']['symbol']] = tok['balance'] / 10**tok['tokenInfo']['decimals']
-	  return tokens
+    conn = http.client.HTTPSConnection("api.ethplorer.io")
+    conn.request('GET', '/getAddressInfo/%s?apiKey=freekey' % address)
+    data = json.loads(conn.getresponse().read().decode())
+    tokens[address] = {'.' : time.time(), 'ETH':data['ETH']['balance']}
+    for tok in data['tokens']:
+      tokens[address][tok['tokenInfo']['symbol']] = tok['balance'] / 10**int(tok['tokenInfo']['decimals'])
+  return tokens
 
 def get_price(coin, curr=None):
   '''Get the data on coins'''
