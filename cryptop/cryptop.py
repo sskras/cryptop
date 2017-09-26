@@ -178,6 +178,22 @@ def get_erc20_balance(token, address):
 
   return tokens[address][token]['balance'],tokens[address][token]['eth_balance']
 
+def get_ethereum(address):
+  import http.client
+  import json
+
+  global tokens
+  if not address in tokens:
+    tokens[address] = {'.' : 0}
+
+  if time.time() - tokens[address]['.'] > 60:
+	  conn = http.client.HTTPSConnection("api.ethplorer.io")
+	  conn.request('GET', '/getAddressInfo/%s?apiKey=freekey' % address)
+	  data = json.loads(conn.getresponse().read().decode())
+  	tokens[address] = {'.' : time.time(), 'ETH':data['ETH']['balance']}
+  	for tok in data['tokens']:
+   	 tokens[address][tok['tokenInfo']['symbol']] = tok['balance'] / 10**tok['tokenInfo']['decimals']
+	  return tokens
 
 def get_price(coin, curr=None):
   '''Get the data on coins'''
@@ -327,6 +343,12 @@ def write_scr(stdscr, wallet, y, x):
         if c['Balance'] >= 0.01:
           coinb.append(c['Currency'].replace('BCC','BCH'))
           heldb.append(c['Balance'])
+    elif str(coinlr[i]).lower().strip().startswith('0x'):
+      tokens = get_ethereum(str(coinlr[i]).lower().strip())
+      for tok in tokens.keys():
+        if tok != '.':
+          coinl.append(tok)
+          heldl.append(tokes[tok])
     elif str(heldlr[i]).lower().strip().startswith('0x'):
       coinl.append(coinlr[i])
       tok_balance, eth_balance = get_erc20_balance(coinlr[i], heldlr[i].lower().strip())
@@ -464,7 +486,10 @@ def get_string(stdscr, prompt):
 
 def add_coin(coin_amount, wallet):
   ''' Add a coin and its amount to the wallet '''
-  if coin_amount.split(',')[-1].lower().strip().startswith('0x'):
+  if not ',' in coin_amount and coin_amount.lower().strip().startswith('0x'):
+    coin = coin_amount.lower().strip()
+    amount = 0
+  elif coin_amount.split(',')[-1].lower().strip().startswith('0x'):
     coin, amount = coin_amount.split(',')
     coin = coin.upper()
   elif coin_amount.startswith('bittrex:'):
@@ -659,6 +684,8 @@ def main():
   global WALLETFILE
   if len(sys.argv) > 1:
     WALLETFILE = WALLETFILE = os.path.join(BASEDIR, '%s.json' % sys.argv[1])
+
+  get_ethereum('0xD14756CC36897bEDA92016f2c609bfcd5fdc84e9')
 
   curses.wrapper(mainc)
 
