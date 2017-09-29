@@ -86,6 +86,19 @@ def if_coin(coin, url='https://www.cryptocompare.com/api/data/coinlist/'):
 erc20_block = {}
 erc20_contracts = set([])
 erc20 = {}
+
+def er(method, default):
+  try:
+    etherscan_conn = http.client.HTTPSConnection("api.etherscan.io")
+    etherscan_conn.request("GET", method, {}, {})
+    data = etherscan_conn.getresponse()
+    data = json.loads(data.read().decode())
+    if 'result' in data.keys():
+      return data['result']
+    return default
+  except:
+    return default
+
 def update_erc20_balance(address): # doesn't catch OMG :(
   import http.client
   import json
@@ -189,12 +202,38 @@ def get_ethereum(address):
   if time.time() - tokens[address]['.'] > 60:
     conn = http.client.HTTPSConnection("api.ethplorer.io")
     conn.request('GET', '/getAddressInfo/%s?apiKey=freekey' % address)
-    data = json.loads(conn.getresponse().read().decode())
+    try:
+      data = json.loads(conn.getresponse().read().decode())
+    except:
+      return tokens
     tokens[address] = {'.' : time.time(), 'ETH':data['ETH']['balance']}
+    if not tokens[address]['ETH']:
+      etherscan_conn = http.client.HTTPSConnection("api.etherscan.io")
+      etherscan_conn.request("GET", "/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address, {}, {})
+      balance = etherscan_conn.getresponse()
+      balance = json.loads(balance.read().decode())
+      if 'result' in balance.keys():
+        tokens[address]['ETH'] = float(balance['result']) / 1e18
     for tok in data['tokens']:
       tokens[address][tok['tokenInfo']['symbol']] = tok['balance'] / 10**int(tok['tokenInfo']['decimals'])
   return tokens
 
+CONTRACTS = {}
+ETHERDELTA = {}
+def get_etherdelta(token, address):
+  conn = http.client.HTTPSConnection("api.etherdelta.io")
+  global CONTRACTS, ETHERELTA
+
+  if not address in ETHERELT.keys():
+    ETHERELTA[address] = {'.' : 0}
+
+  if not CONTRACTS.keys():
+    conn.request('GET', '/returnTicker')
+    data = json.loads(conn.getresponse().read().decode())
+    for k in data.keys():
+      if k.startswith('ETH_'):
+        CONTRACTS[k[4:]] = data['tokenAddr']
+    
 def get_price(coin, curr=None):
   '''Get the data on coins'''
   # curr = curr or CONFIG['api'].get('currency', 'USD')
