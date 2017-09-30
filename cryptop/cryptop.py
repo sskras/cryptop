@@ -221,19 +221,41 @@ def get_ethereum(address):
 CONTRACTS = {}
 ETHERDELTA = {}
 def get_etherdelta(token, address):
-  conn = http.client.HTTPSConnection("api.etherdelta.io")
+  import http.client
+  import json
+  conn = http.client.HTTPSConnection("api.etherdelta.com")
   global CONTRACTS, ETHERELTA
+  token = token.upper()
+  address='0xB7edBA4d444Ebca43A41880A8189c03bf52d1152'.lower()
+  token = 'LINK'
 
-  if not address in ETHERELT.keys():
-    ETHERELTA[address] = {'.' : 0}
+  if not address in ETHERDELTA.keys():
+    ETHERDELTA[address] = {}
+  if not token in ETHERDELTA[address]:
+    ETHERDELTA[address][token] = {'.' : 0, 'balance' :  0.0}
 
   if not CONTRACTS.keys():
     conn.request('GET', '/returnTicker')
     data = json.loads(conn.getresponse().read().decode())
     for k in data.keys():
       if k.startswith('ETH_'):
-        CONTRACTS[k[4:]] = data['tokenAddr']
-    
+        CONTRACTS[k[4:]] = data[k]['tokenAddr']
+
+  if not token in CONTRACTS.keys():
+    return 0.0
+
+  if time.time() - ETHERDELTA[address][token]['.'] > 60:
+    ETHERDELTA[address][token]['.'] = time.time()
+    conn.request('GET','/funds/%s/%s/0' % (address,CONTRACTS[token]))
+
+    data = json.loads(conn.getresponse().read().decode())
+    #try:
+    #  data = json.loads(conn.getresponse().read().decode())
+    #except:
+    #  return 0.0
+    assert False, str(data)
+  return ETHERDELTA[address][token]
+
 def get_price(coin, curr=None):
   '''Get the data on coins'''
   # curr = curr or CONFIG['api'].get('currency', 'USD')
@@ -354,6 +376,7 @@ def write_scr(stdscr, wallet, y, x):
   totalb = 0
   coinlr = list(wallet.keys())
   heldlr = list(wallet.values())
+
   coinl = []
   heldl = []
 
@@ -389,7 +412,7 @@ def write_scr(stdscr, wallet, y, x):
         if tok != '.':
           coinl.append(tok)
           heldl.append(tokens[address][tok])
-          #assert False, str(tok) + " " + str(tokens[tok])
+          #delta = get_etherdelta(tok, address)
     elif str(heldlr[i]).lower().strip().startswith('0x'):
       coinl.append(coinlr[i])
       tok_balance, eth_balance = get_erc20_balance(coinlr[i], heldlr[i].lower().strip())
@@ -528,6 +551,9 @@ def get_string(stdscr, prompt):
 def add_coin(coin_amount, wallet):
   ''' Add a coin and its amount to the wallet '''
   if not ',' in coin_amount and coin_amount.lower().strip().startswith('0x'):
+    coin = coin_amount.lower().strip()
+    amount = 0
+  elif not ',' in coin_amount and coin_amount.lower().strip().startswith('etherdelta:'):
     coin = coin_amount.lower().strip()
     amount = 0
   elif coin_amount.split(',')[-1].lower().strip().startswith('0x'):
@@ -720,13 +746,11 @@ def main():
     SYMBOLLIST = ['$','Ξ','Ƀ']
 
   requests_cache.install_cache(cache_name='api_cache', backend='memory',
-    expire_after=int(CONFIG['api'].get('cache', 10)))
+    expire_after=int(CONFIG['api'].get('cache', 30)))
 
   global WALLETFILE
   if len(sys.argv) > 1:
     WALLETFILE = WALLETFILE = os.path.join(BASEDIR, '%s.json' % sys.argv[1])
-
-  get_ethereum('0xD14756CC36897bEDA92016f2c609bfcd5fdc84e9')
 
   curses.wrapper(mainc)
 
