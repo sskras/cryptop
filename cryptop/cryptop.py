@@ -746,7 +746,7 @@ def main():
     SYMBOLLIST = ['$','Ξ','Ƀ']
 
   requests_cache.install_cache(cache_name='api_cache', backend='memory',
-    expire_after=int(CONFIG['api'].get('cache', 30)))
+    expire_after=int(CONFIG['api'].get('cache', 60)))
 
   global WALLETFILE
   if len(sys.argv) > 1:
