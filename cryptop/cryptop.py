@@ -21,7 +21,8 @@ import locale
 import datetime
 import requests
 import requests_cache
-
+import http.client
+import json
 
 # GLOBALS!
 BASEDIR = os.path.join(os.path.expanduser('~'), '.cryptop')
@@ -38,6 +39,8 @@ SORT_FNS = { 'coin' : lambda item: item[0],
 SORTS = list(SORT_FNS.keys())
 COLUMN = SORTS.index('val')
 ORDER = True
+
+ethplorer_conn = http.client.HTTPSConnection("api.ethplorer.io")
 
 VIEW = 'WALLET'
 FIAT = 'EUR'
@@ -88,8 +91,8 @@ erc20_contracts = set([])
 erc20 = {}
 
 def er(method, default):
+  global etherscan_conn
   try:
-    etherscan_conn = http.client.HTTPSConnection("api.etherscan.io")
     etherscan_conn.request("GET", method, {}, {})
     data = etherscan_conn.getresponse()
     data = json.loads(data.read().decode())
@@ -100,7 +103,6 @@ def er(method, default):
     return default
 
 def update_erc20_balance(address): # doesn't catch OMG :(
-  import http.client
   import json
   import time
   global erc20_time, erc20_block, erc20, erc20_contracts
@@ -145,7 +147,6 @@ def update_erc20_balance(address): # doesn't catch OMG :(
 
 tokens = {}
 def get_erc20_balance(token, address):
-  import http.client
   import json
 
   global tokens
@@ -192,36 +193,34 @@ def get_erc20_balance(token, address):
   return tokens[address][token]['balance'],tokens[address][token]['eth_balance']
 
 def get_ethereum(address):
-  import http.client
   import json
 
-  global tokens
+  global tokens, ethplorer_conn, etherscan_conn
   if not address in tokens:
     tokens[address] = {'.' : 0}
 
   if time.time() - tokens[address]['.'] > 60:
-    conn = http.client.HTTPSConnection("api.ethplorer.io")
-    conn.request('GET', '/getAddressInfo/%s?apiKey=freekey' % address)
     try:
-      data = json.loads(conn.getresponse().read().decode())
-    except:
+      r = requests.get('https://api.ethplorer.io/getAddressInfo/%s?apiKey=freekey' % address)
+    except requests.exceptions.RequestException:
       return tokens
+    data = r.json()
     tokens[address] = {'.' : time.time(), 'ETH':data['ETH']['balance']}
-    if not tokens[address]['ETH']:
-      etherscan_conn = http.client.HTTPSConnection("api.etherscan.io")
-      etherscan_conn.request("GET", "/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address, {}, {})
-      balance = etherscan_conn.getresponse()
-      balance = json.loads(balance.read().decode())
-      if 'result' in balance.keys():
-        tokens[address]['ETH'] = float(balance['result']) / 1e18
     for tok in data['tokens']:
       tokens[address][tok['tokenInfo']['symbol']] = tok['balance'] / 10**int(tok['tokenInfo']['decimals'])
+    if not tokens[address]['ETH']:
+      try:
+        r = requests.get("https://api.etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address)
+      except requests.exceptions.RequestException:
+        return tokens
+      balance = r.json()
+      if 'result' in balance.keys():
+        tokens[address]['ETH'] = float(balance['result']) / 1e18
   return tokens
 
 CONTRACTS = {}
 ETHERDELTA = {}
 def get_etherdelta(token, address):
-  import http.client
   import json
   conn = http.client.HTTPSConnection("api.etherdelta.com")
   global CONTRACTS, ETHERELTA
@@ -256,6 +255,7 @@ def get_etherdelta(token, address):
     assert False, str(data)
   return ETHERDELTA[address][token]
 
+last_price = {}
 def get_price(coin, curr=None):
   '''Get the data on coins'''
   # curr = curr or CONFIG['api'].get('currency', 'USD')
@@ -264,21 +264,22 @@ def get_price(coin, curr=None):
     curr = CURRENCY
   fmt = 'https://min-api.cryptocompare.com/data/pricemultifull?fsyms={}&tsyms={}'
 
+  if not coin in last_price.keys():
+    last_price[coin] = [(0,0,0) for c in coin.split(',')]
+
   try:
     r = requests.get(fmt.format(coin, curr))
   except requests.exceptions.RequestException:
-    time.sleep(2)
-    return get_price(coin,curr)
-    sys.exit('Could not complete request')
+    return last_price[coin]
 
   try:
     data_raw = r.json()['RAW']
-    ret = [(data_raw[c][curr]['PRICE'],
+    last_price[coin] = [(data_raw[c][curr]['PRICE'],
         data_raw[c][curr]['MKTCAP'] / 1e6,
         data_raw[c][curr]['CHANGEPCT24HOUR'] or 0.0) for c in coin.split(',')]
-    return ret
+    return last_price[coin]
   except:
-    return [(0,0,0) for c in coin.split(',')]
+    return last_price[coin]
 
 
 def get_theme_colors():
@@ -399,7 +400,6 @@ def write_scr(stdscr, wallet, y, x):
           balance = ret
           BALANCE_TIME = time.time()
         except:
-          time.sleep(5)
           continue
       for c in balance['result']:
         if c['Balance'] >= 0.01:
