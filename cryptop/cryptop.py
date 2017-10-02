@@ -211,9 +211,9 @@ def get_ethereum(address):
     if not tokens[address]['ETH']:
       try:
         r = requests.get("https://api.etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address)
+        balance = r.json()
       except requests.exceptions.RequestException:
         return tokens
-      balance = r.json()
       if 'result' in balance.keys():
         tokens[address]['ETH'] = float(balance['result']) / 1e18
   return tokens
