@@ -202,9 +202,9 @@ def get_ethereum(address):
   if time.time() - tokens[address]['.'] > 60:
     try:
       r = requests.get('https://api.ethplorer.io/getAddressInfo/%s?apiKey=freekey' % address)
-    except requests.exceptions.RequestException:
+      data = r.json()
+    except:
       return tokens
-    data = r.json()
     tokens[address] = {'.' : time.time(), 'ETH':data['ETH']['balance']}
     for tok in data['tokens']:
       tokens[address][tok['tokenInfo']['symbol']] = tok['balance'] / 10**int(tok['tokenInfo']['decimals'])
