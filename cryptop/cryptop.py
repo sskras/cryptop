@@ -145,11 +145,15 @@ def update_erc20_balance(address): # doesn't catch OMG :(
         if balance > 0:
           erc20[address][data['symbol']] = balance
 
-tokens = {}
+etherscan_conn = None
 def get_erc20_balance(token, address):
   import json
 
-  global tokens
+  global etherscan_conn
+  if etherscan_conn is None:
+    etherscan_conn = http.client.HTTPSConnection("etherscan.io")
+
+  tokens = {}
   if not address in tokens:
     tokens[address] = {}
   if not token in tokens[address]:
@@ -159,39 +163,31 @@ def get_erc20_balance(token, address):
     tokens[address][token]['time'] = time.time()
     try:
       if token.lower() ==  'eth':
-        etherscan_conn = http.client.HTTPSConnection("api.etherscan.io")
-        etherscan_conn.request("GET", "/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address, {}, {})
-        data = etherscan_conn.getresponse()
-        data = json.loads(data.read().decode())
+        r = requests.get("https://etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address, {}, {})
+        data = r.json()
         if 'result' in data and data['result']:
           tokens[address][token]['balance'] = float(data['result']) / 1e18
-          tokens[address][token]['eth_balance'] = float(data['result']) / 1e18
+          tokens[address]['token']['eth_balance'] = float(data['result']) / 1e18
       else:
-        conn = http.client.HTTPSConnection("etherscan.io")
-        conn.request("GET", "/tokens?q="+token.lower(), {}, {})
-        res = conn.getresponse()
+        etherscan_conn.request("GET", "/tokens?q="+token.lower(), {}, {})
+        res = etherscan_conn.getresponse()
         data = res.read()
         data = str(data)
 
         end = 0
         nth = 1
-        #if token == 'LINK':
-        #  nth = 5
         for i in range(nth):
-          start = data.find('/token/', end) + len('/token/')
+          start = data.find('/token/0x', end) + len('/token/')
           end = data.find('>',start) - 2
         contract = data[start:end]
-
-        conn = http.client.HTTPSConnection("api.tokenbalance.com")
-        conn.request("GET", "/token/%s/%s" % (contract,address), {}, {})
-        ret = conn.getresponse().read().decode()
-        ret = json.loads(ret)
-        tokens[address][token].update(ret)
+        r = requests.get("https://api.tokenbalance.com/token/%s/%s" % (contract,address))
+        tokens[address][token].update(r.json())
     except:
       pass
 
   return tokens[address][token]['balance'],tokens[address][token]['eth_balance']
 
+tokens = {}
 def get_ethereum(address):
   import json
 
@@ -203,19 +199,23 @@ def get_ethereum(address):
     try:
       r = requests.get('https://api.ethplorer.io/getAddressInfo/%s?apiKey=freekey' % address)
       data = r.json()
-    except:
+    except Exception:
       return tokens
     tokens[address] = {'.' : time.time(), 'ETH':data['ETH']['balance']}
-    for tok in data['tokens']:
-      tokens[address][tok['tokenInfo']['symbol']] = tok['balance'] / 10**int(tok['tokenInfo']['decimals'])
-    if not tokens[address]['ETH']:
+    apidown = not tokens[address]['ETH']
+    if apidown:
+      for tok in data['tokens']:
+        tokens[address][tok['tokenInfo']['symbol']], _ = get_erc20_balance(tok['tokenInfo']['symbol'], address)
       try:
         r = requests.get("https://api.etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address)
         balance = r.json()
-      except requests.exceptions.RequestException:
+      except Exception:
         return tokens
       if 'result' in balance.keys():
         tokens[address]['ETH'] = float(balance['result']) / 1e18
+    else:
+      for tok in data['tokens']:
+        tokens[address][tok['tokenInfo']['symbol']] = tok['balance'] / 10**int(tok['tokenInfo']['decimals'])
   return tokens
 
 CONTRACTS = {}
