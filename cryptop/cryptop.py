@@ -200,10 +200,10 @@ def get_ethereum(address):
     try:
       r = requests.get('https://api.ethplorer.io/getAddressInfo/%s?apiKey=freekey' % address)
       data = r.json()
+      tokens[address] = {'.' : time.time(), 'ETH':data['ETH']['balance']}
       apidown = not tokens[address]['ETH']
     except Exception:
       apidown=True
-    tokens[address] = {'.' : time.time(), 'ETH':data['ETH']['balance']}
     if apidown:
       for tok in data['tokens']:
         tokens[address][tok['tokenInfo']['symbol']], _ = get_erc20_balance(tok['tokenInfo']['symbol'], address)
