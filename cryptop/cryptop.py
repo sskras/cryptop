@@ -146,6 +146,7 @@ def update_erc20_balance(address): # doesn't catch OMG :(
           erc20[address][data['symbol']] = balance
 
 etherscan_conn = None
+erc20_balance = {]}
 def get_erc20_balance(token, address):
   import json
 
@@ -199,10 +200,10 @@ def get_ethereum(address):
     try:
       r = requests.get('https://api.ethplorer.io/getAddressInfo/%s?apiKey=freekey' % address)
       data = r.json()
+      apidown = not tokens[address]['ETH']
     except Exception:
-      return tokens
+      apidown=True
     tokens[address] = {'.' : time.time(), 'ETH':data['ETH']['balance']}
-    apidown = not tokens[address]['ETH']
     if apidown:
       for tok in data['tokens']:
         tokens[address][tok['tokenInfo']['symbol']], _ = get_erc20_balance(tok['tokenInfo']['symbol'], address)
