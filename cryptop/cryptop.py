@@ -146,7 +146,7 @@ def update_erc20_balance(address): # doesn't catch OMG :(
           erc20[address][data['symbol']] = balance
 
 etherscan_conn = None
-erc20_balance = {]}
+erc20_balance = {}
 def get_erc20_balance(token, address):
   import json
 
