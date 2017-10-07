@@ -204,7 +204,7 @@ def get_ethereum(address):
       apidown = not tokens[address]['ETH']
     except Exception:
       apidown=True
-    if apidown:
+    if apidown and 'tokens' in data.keys():
       for tok in data['tokens']:
         tokens[address][tok['tokenInfo']['symbol']], _ = get_erc20_balance(tok['tokenInfo']['symbol'], address)
       try:
