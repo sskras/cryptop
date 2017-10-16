@@ -207,7 +207,8 @@ def get_ethereum(address):
       data={}
     if apidown and 'tokens' in data.keys():
       for tok in data['tokens']:
-        tokens[address][tok['tokenInfo']['symbol']], _ = get_erc20_balance(tok['tokenInfo']['symbol'], address)
+        if tok['tokenInfo']['symbol'] not in ['IND','WRC']:
+          tokens[address][tok['tokenInfo']['symbol']], _ = get_erc20_balance(tok['tokenInfo']['symbol'], address)
       try:
         r = requests.get("https://api.etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address)
         balance = r.json()
@@ -215,9 +216,10 @@ def get_ethereum(address):
         return tokens
       if 'result' in balance.keys():
         tokens[address]['ETH'] = float(balance['result']) / 1e18
-    else:
+    elif 'tokens' in data.keys():
       for tok in data['tokens']:
-        tokens[address][tok['tokenInfo']['symbol']] = tok['balance'] / 10**int(tok['tokenInfo']['decimals'])
+        if tok['tokenInfo']['symbol'] not in ['IND','WRC']:
+          tokens[address][tok['tokenInfo']['symbol']] = tok['balance'] / 10**int(tok['tokenInfo']['decimals'])
   return tokens
 
 CONTRACTS = {}
