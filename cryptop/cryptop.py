@@ -160,8 +160,8 @@ def get_erc20_balance(token, address):
   if not token in tokens[address]:
     tokens[address][token] = { 'balance' : 0, 'eth_balance' : 0, 'time' : 0 }
 
-  if time.time() - tokens[address][token]['time'] > 60:
-    tokens[address][token]['time'] = time.time()
+  if True: #time.time() - tokens[address][token]['time'] > 60:
+    #tokens[address][token]['time'] = time.time()
     try:
       if token.lower() ==  'eth':
         r = requests.get("https://etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address, {}, {})
@@ -191,6 +191,7 @@ def get_erc20_balance(token, address):
 tokens = {}
 def get_ethereum(address):
   import json
+  blacklist= ['IND','WRC','RST-P', 'ATM', 'JOT']
 
   global tokens, ethplorer_conn, etherscan_conn
   if not address in tokens:
@@ -207,7 +208,7 @@ def get_ethereum(address):
       data={}
     if apidown and 'tokens' in data.keys():
       for tok in data['tokens']:
-        if tok['tokenInfo']['symbol'] not in ['IND','WRC']:
+        if tok['tokenInfo']['symbol'] not in blacklist:
           tokens[address][tok['tokenInfo']['symbol']], _ = get_erc20_balance(tok['tokenInfo']['symbol'], address)
       try:
         r = requests.get("https://api.etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address)
@@ -218,7 +219,7 @@ def get_ethereum(address):
         tokens[address]['ETH'] = float(balance['result']) / 1e18
     elif 'tokens' in data.keys():
       for tok in data['tokens']:
-        if tok['tokenInfo']['symbol'] not in ['IND','WRC']:
+        if tok['tokenInfo']['symbol'] not in blacklist:
           tokens[address][tok['tokenInfo']['symbol']] = tok['balance'] / 10**int(tok['tokenInfo']['decimals'])
   return tokens
 
