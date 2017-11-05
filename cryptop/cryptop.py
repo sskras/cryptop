@@ -85,6 +85,41 @@ def if_coin(coin, url='https://www.cryptocompare.com/api/data/coinlist/'):
   '''Check if coin exists'''
   return coin in requests.get(url).json()['Data']
 
+coinstats = {}
+coinmap = {'KNC' : 'kyber-network'}
+def update_coins():
+  cmc = http.client.HTTPSConnection("api.coinmarketcap.com")
+  cmc.request("GET", '/v1/ticker/?convert=EUR&limit=9999', {}, {})
+  data = cmc.getresponse()
+  data = json.loads(data.read().decode())
+  for item in data[::-1]:
+    if item['symbol'] in coinmap and coinmap[item['symbol']] != item['id']:
+      continue
+    coinstats[item['symbol']] = item
+
+def ticker():
+  import time
+  while True:
+    time.sleep(10)
+    update_coins()
+
+bittrex = {}
+bittrex_time = 0
+def update_bittrex(key, secret):
+  global bittrex_time
+  if time.time() - bittrex_time > 10:
+    bittrex_time = time.time()
+    try:
+      url = "https://bittrex.com/api/v1.1/account/getbalances?apikey=%s&nonce=%d&" % (key, int(time.time() * 1000))
+      ret = requests.get(url,
+          headers={"apisign": hmac.new(secret.encode(), url.encode(), hashlib.sha512).hexdigest()},
+          timeout=5
+      ).json()
+      bittrex[key] = ret
+    except:
+      if not key in bittrex.keys():
+        bittrex[key] = {'result' : []}
+  return bittrex[key]
 
 erc20_block = {}
 erc20_contracts = set([])
@@ -191,7 +226,7 @@ def get_erc20_balance(token, address):
 tokens = {}
 def get_ethereum(address):
   import json
-  blacklist= ['IND','WRC','RST-P', 'ATM', 'JOT', 'DATA']
+  blacklist= ['IND','WRC','RST-P', 'ATM', 'JOT']
 
   global tokens, ethplorer_conn, etherscan_conn
   if not address in tokens:
@@ -261,7 +296,7 @@ def get_etherdelta(token, address):
   return ETHERDELTA[address][token]
 
 last_price = {}
-def get_price(coin, curr=None):
+def get_price_old(coin, curr=None):
   '''Get the data on coins'''
   # curr = curr or CONFIG['api'].get('currency', 'USD')
   if curr is None:
@@ -286,71 +321,27 @@ def get_price(coin, curr=None):
   except:
     return last_price[coin]
 
-last_price = {}
-last_price_usd = {}
-name_map = {}
-def get_price_new(coin, curr=None):
-  if ',' in coin:
-    res = []
-    for c in coin.split(','):
-      res.extend(get_price(c, curr))
-    return res
-
+def get_price(coin, curr=None):
   if curr is None:
     global CURRENCY
     curr = CURRENCY
 
-  if not name_map:
-    r = requests.get('https://api.coinmarketcap.com/v1/ticker/?convert=USD&limit=9999')
-    for item in r.json():
-      name_map[item['symbol']] = item['name']
-
-  coin = coin.upper()
-  curr = curr.upper()
-
-  fmt = 'https://api.coinmarketcap.com/v1/ticker/{}/?convert=EUR'
-
-  if not coin in last_price.keys():
-    last_price[coin] = (0,0,0,0,0)
-  if not coin in last_price_usd.keys():
-    last_price_usd[coin] = (0,0,0,0,0)
-
-  if (not 'ETH' in last_price_usd or last_price_usd['ETH'] == 0) and curr == 'ETH':
-    get_price('ETH', 'USD')
-  if (not 'BTC' in last_price_usd or last_price_usd['BTC'] == 0) and curr == 'BTC':
-    get_price('BTC', 'USD')
-
-  try:
-    r = requests.get(fmt.format(name_map[coin]))
-  except requests.exceptions.RequestException:
-    return [last_price[coin]]
-
-  data = json.loads(r.text.replace('[','').replace(']',''))
-  #assert False, str(data.keys()) + ' ' + data['price_usd'] ##['price_usd'] #.keys()
-
-  if not 'price_usd' in data.keys():
-    return [last_price[coin]]
-  
-  price, volume, c1h, c24h, c7d = data['price_usd'], data['24h_volume_usd'], data['percent_change_1h'], data['percent_change_24h'], data['percent_change_7d']
-  last_price_usd[coin] = (price,volume,c1h,c24h,c7d)
-  if curr == 'EUR':
-    price, volume = data['price_eur'], data['24h_volume_eur']
-  elif curr != 'USD':
-    price /= last_price_usd[curr][0]
-
-  try:
-    price, volume, c1h, c24h, c7d = data['price_usd'], data['24h_volume_usd'], data['percent_change_1h'], data['percent_change_24h'], data['percent_change_7d']
-    last_price_usd[coin] = (price,volume,c1h,c24h,c7d)
+  res = []
+  for tok in coin.split(','):
+    if not tok in coinstats.keys():
+      #assert tok in coinstats.keys(), "%s not listed on CMC" % tok
+      continue
+    tok = coinstats[tok]
+    sf = lambda x: float(x or 0)
+    price, volume, c1h, c24h, c7d = sf(tok['price_usd']), sf(tok['24h_volume_usd']), sf(tok['percent_change_1h']), sf(tok['percent_change_24h']), sf(tok['percent_change_7d'])
     if curr == 'EUR':
-      price, volume = data['price_eur'], data['24h_volume_eur']
+      price, volume = sf(tok['price_eur']), sf(tok['24h_volume_eur'])
     elif curr != 'USD':
-      price /= last_price_usd[curr][0]
-      volume /= last_price_usd[curr][1]
-      c1h,c24h,c7d = data['percent_change_1h'] / last_price_usd[curr][2], data['percent_change_24h'] / last_price_usd[curr][3], data['percent_change_7d'] / last_price_usd[curr][4]    
-    last_price[coin] = (price,volume,c1h,c23h,c7d)
-    return [last_price[coin]]
-  except:
-    return [last_price[coin]]
+      price /= sf(coinstats[curr]['price_usd'])
+      volume /= sf(coinstats[curr]['24h_volume_usd'])
+      c1h,c24h,c7d = sf(tok['percent_change_1h']) / sf(coinstats[curr]['percent_change_1h']), sf(tok['percent_change_24h']) / sf(coinstats[curr]['percent_change_24h']), sf(tok['percent_change_7d']) / sf(coinstats[curr]['percent_change_7d'])
+    res.append((price,volume,c1h,c24h,c7d))
+  return res
 
 def get_theme_colors():
   ''' Returns curses colors according to the config'''
@@ -423,152 +414,93 @@ def str_formatter(coin, val, held, ticks):
   ticks = { "t%d" % i : t for i,t in enumerate(ticks) }
   return '{:<{t0}} {:>{t1}.2f} {:>{t2}.{prec}f} {} {:>{t3}.{prec}f} {} {:>{t5}.3f}M {}'.format(
     coin, float(held), val[0], SYMBOL, float(held)*val[0],
-    SYMBOL, val[1], SYMBOL, prec=NROFDECIMALS,**ticks)
+    SYMBOL, val[1] / 1e6, SYMBOL, prec=NROFDECIMALS,**ticks)
 
-def write_scr(stdscr, wallet, y, x):
-  '''Write text and formatting to screen'''
-  from math import ceil
+def write_coins(name, coins, held, stdscr, x, y, off=0):
   width, _ = terminal_size()
   width -= 5
-  ticks = [7,15,15,15,15,15]
-  diffs = [0,0,2,2,3,3]
+  ticks = [15,15,15,15,15,15,15,15]
+  diffs = [0,0,2,2,3,3,3,3]
   scale = max(width / float(sum(ticks)),1.0)
   hticks = [int(t * scale) for t in ticks]
   sticks = [int(t * scale - d) for t,d in zip(ticks,diffs)]
+  total = 0
 
-  stdscr.erase()
-  if y >= 0:
-    header = '{:<%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
+  if y > off + 1:
+    coinvl = get_price(','.join(coins))
+    s = sorted(list(zip(coins, coinvl, held)), key=SORT_FNS[SORTS[COLUMN]], reverse=ORDER)
+    coinb = list(x[0] for x in s)
+    coinvl = list(x[1] for x in s)
+    heldb = list(x[2] for x in s)
+    counter = 0
+    for coin, val, held in zip(coinb, coinvl, heldb):
+      if off + coinb.index(coin) + 4 < y:
+        if float(held) > 0.0:
+          stdscr.addnstr(off + coinb.index(coin) + 1, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(2 + counter % 2))
+        else:
+          stdscr.addnstr(off + coinb.index(coin) + 1, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(8 + counter % 2))
+        for i in [2,3,4]:
+          if val[i] > 0:
+            stdscr.addnstr(off + coinb.index(coin) + 1, hticks[0] + hticks[1] + 1 + (3+i-2)*(hticks[2]+1),
+            '  {:>{t6}.2f} %'.format(val[i], t6=sticks[-1]), x, curses.color_pair(4 + counter % 2))
+          elif val[i] < 0:
+            stdscr.addnstr(off + coinb.index(coin) + 1, hticks[0] + hticks[1] + 1 + (3+i-2)*(hticks[2]+1),
+            '  {:>{t6}.2f} %'.format(val[i], t6=sticks[-1]), x, curses.color_pair(6 + counter % 2))
+          else:
+            stdscr.addnstr(off + coinb.index(coin) + 1, hticks[0] + hticks[1] + 1 + (3+i-2)*(hticks[2]+1),
+            '  {:>{t6}.2f} %'.format(val[i], t6=sticks[-1]), x, curses.color_pair(2 + counter % 2))
+      total += float(held) * val[0]
+      counter += 1
+
+  if y > off:
+    header = '{:<%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
     header = header.format(
-      'TREZOR', 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', 'MARKET CAP', '24H CHANGE')
-    stdscr.addnstr(0, 0, header, x, curses.color_pair(1))
+      name + ' ({:.2f})'.format(total), 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', 'VOLUME', 'HOURLY', 'DAILY', 'WEEKLY')
+    stdscr.addnstr(off, 0, header, x, curses.color_pair(1))
 
-  totall = 0
-  totalb = 0
-  coinlr = list(wallet.keys())
-  heldlr = list(wallet.values())
+  return total
 
-  coinl = []
-  heldl = []
+def write_scr(stdscr, wallet, y, x):
+  '''Write text and formatting to screen'''
 
-  coinb = []
-  heldb = []
+  total = 0
+  coinl = list(wallet.keys())
+  heldl = list(wallet.values())
 
-  for i in range(len(coinlr)):
-    if coinlr[i].startswith('bittrex:'):
-      nonce = str(int(time.time() * 1000))
-      url = "https://bittrex.com/api/v1.1/account/getbalances?apikey=%s&nonce=%s&" % (coinlr[i].split(':')[1], nonce)
-      global balance
-      global BALANCE_TIME
-      if time.time() - BALANCE_TIME > 60:
-        try:
-          ret = requests.get(
-              url,
-              headers={"apisign": hmac.new(heldlr[i].encode(), url.encode(), hashlib.sha512).hexdigest()},
-              timeout=5
-          ).json()
-          balance = ret
-          BALANCE_TIME = time.time()
-        except:
-          continue
-      for c in balance['result']:
-        if c['Balance'] >= 0.01:
-          coinb.append(c['Currency'].replace('BCC','BCH'))
-          heldb.append(c['Balance'])
-    elif str(coinlr[i]).lower().strip().startswith('0x'):
-      address = str(coinlr[i]).lower().strip()
-      tokens = get_ethereum(address)
-      for tok in tokens[address].keys():
-        if tok != '.':
-          coinl.append(tok)
-          heldl.append(tokens[address][tok])
-          #delta = get_etherdelta(tok, address)
-    elif str(heldlr[i]).lower().strip().startswith('0x'):
-      coinl.append(coinlr[i])
-      tok_balance, eth_balance = get_erc20_balance(coinlr[i], heldlr[i].lower().strip())
-      heldl.append(tok_balance)
-      if not 'ETH' in coinlr and not 'ETH' in coinl:
-        coinl.append('ETH')
-        heldl.append(eth_balance)
+  coin = { 'custom' : [] }
+  held = { 'custom' : [] }
+
+  for i in range(len(coinl)):
+    if coinl[i] == 'bittrex':
+      balance = update_bittrex(*heldl[i].split(':'))
+      coin['bittrex'] = [ c['Currency'].replace('BCC','BCH') for c in balance['result'] if c['Balance'] >= 0.01 ]
+      held['bittrex'] = [ c['Balance'] for c in balance['result'] if c['Balance'] >= 0.01 ]
+    elif heldl[i].lower().startswith('0x'):
+      tokens = get_ethereum(heldl[i])
+      coin[coinl[i].lower()] = [ tok for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() ]
+      held[coinl[i].lower()] = [ tokens[heldl[i]][tok] for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() ]
     else:
-      coinl.append(coinlr[i])
-      heldl.append(heldlr[i])
+      coin['custom'].append(coinl[i])
+      held['custom'].append(float(heldl[i]))
 
-  ncl = len(coinl)
-  ncb = len(coinb)
+  off = 0
+  stdscr.erase()
+  if 'custom' in coin and coin['custom']:
+    total += write_coins('CUSTOM', coin['custom'], held['custom'], stdscr, x, y, off)
+    off += len(coin['custom']) + 1
+  if 'bittrex' in coin and coin['bittrex']:
+    total += write_coins('BITTREX', coin['bittrex'], held['bittrex'], stdscr, x, y, off)
+    off += len(coin['bittrex']) + 1
+  for key in coin.keys():
+    if key not in ['custom', 'bittrex']:
+      total += write_coins(key.upper(), coin[key], held[key], stdscr, x, y, off)
+      off += len(coin[key]) + 1
 
-  if coinl:
-    coinvl = get_price(','.join(coinl))
-
-    if y > 2:
-      s = sorted(list(zip(coinl, coinvl, heldl)), key=SORT_FNS[SORTS[COLUMN]], reverse=ORDER)
-      coinl = list(x[0] for x in s)
-      coinvl = list(x[1] for x in s)
-      heldl = list(x[2] for x in s)
-      counter = 0
-      for coin, val, held in zip(coinl, coinvl, heldl):
-        if coinl.index(coin) + 1 < y:
-          if float(held) > 0.0:
-            stdscr.addnstr(coinl.index(coin) + 1, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(2 + counter % 2))
-          else:
-            stdscr.addnstr(coinl.index(coin) + 1, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(8 + counter % 2))
-
-          if val[2] > 0:
-            stdscr.addnstr(coinl.index(coin) + 1, hticks[0] + hticks[1] + 1 + 3*(hticks[2]+1),
-            '  {:>{t6}.2f} %'.format(val[2], t6=sticks[-1]), x, curses.color_pair(4 + counter % 2))
-          elif val[2] < 0:
-            stdscr.addnstr(coinl.index(coin) + 1, hticks[0] + hticks[1] + 1 + 3*(hticks[2]+1),
-            '  {:>{t6}.2f} %'.format(val[2], t6=sticks[-1]), x, curses.color_pair(6 + counter % 2))
-          else:
-            stdscr.addnstr(coinl.index(coin) + 1, hticks[0] + hticks[1] + 1 + 3*(hticks[2]+1),
-            '  {:>{t6}.2f} %'.format(val[2], t6=sticks[-1]), x, curses.color_pair(2 + counter % 2))
-        totall += float(held) * val[0]
-        counter += 1
-
-  if y > ncl + 1:
-    stdscr.addnstr(ncl + 1, 0, 'Value: {:10.2f} {}  '
-      .format(totall, CURRENCY), x, curses.color_pair(10))
-
-  if coinb:
-    if y > ncl + 2:
-      header = '{:<%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
-      header = header.format(
-        'BITTREX', 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', 'MARKET CAP', '24H CHANGE')
-      stdscr.addnstr(ncl + 2, 0, header, x, curses.color_pair(1))
-    if y > ncl + 3:
-      coinvl = get_price(','.join(coinb))
-      s = sorted(list(zip(coinb, coinvl, heldb)), key=SORT_FNS[SORTS[COLUMN]], reverse=ORDER)
-      coinb = list(x[0] for x in s)
-      coinvl = list(x[1] for x in s)
-      heldb = list(x[2] for x in s)
-      counter = 0
-      for coin, val, held in zip(coinb, coinvl, heldb):
-        if ncl + coinb.index(coin) + 4 < y:
-          if float(held) > 0.0:
-            stdscr.addnstr(ncl + coinb.index(coin) + 3, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(2 + counter % 2))
-          else:
-            stdscr.addnstr(ncl + coinb.index(coin) + 3, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(8 + counter % 2))
-
-          if val[2] > 0:
-            stdscr.addnstr(ncl + coinb.index(coin) + 3, hticks[0] + hticks[1] + 1 + 3*(hticks[2]+1),
-            '  {:>{t6}.2f} %'.format(val[2], t6=sticks[-1]), x, curses.color_pair(4 + counter % 2))
-          elif val[2] < 0:
-            stdscr.addnstr(ncl + coinb.index(coin) + 3, hticks[0] + hticks[1] + 1 + 3*(hticks[2]+1),
-            '  {:>{t6}.2f} %'.format(val[2], t6=sticks[-1]), x, curses.color_pair(6 + counter % 2))
-          else:
-            stdscr.addnstr(ncl + coinb.index(coin) + 3, hticks[0] + hticks[1] + 1 + 3*(hticks[2]+1),
-            '  {:>{t6}.2f} %'.format(val[2], t6=sticks[-1]), x, curses.color_pair(2 + counter % 2))
-        totalb += float(held) * val[0]
-        counter += 1
-
-
-  if y > ncl + ncb + 3:
-    stdscr.addnstr(ncl + ncb + 3, 0, 'Value: {:10.2f} {}  '
-      .format(totalb, CURRENCY), x, curses.color_pair(10))
+  if y > off:
     stdscr.addnstr(y - 2, 0, 'Total Holdings: {:10.2f} {}  '
-      .format(totall+totalb, CURRENCY), x, curses.color_pair(11))
+      .format(total, CURRENCY), x, curses.color_pair(11))
     stdscr.addnstr(y - 1, 0,
-      '[A] Add coin [R] Remove coin [T] Add transaction [F] Switch FIAT/ETH [V] View ledger [S] Sort [C] Cycle sort [Q] Exit', x,
+      '[A] Add coin [R] Remove coin [T] Add transaction [F] Switch FIAT/ETH [S] Sort [C] Cycle sort [Q] Exit', x,
       curses.color_pair(2))
 
 
@@ -675,49 +607,6 @@ def remove_coin(coin, wallet):
     wallet.pop(coin, None)
   return wallet
 
-def view_ledger(stdscr, ledger, x, y):
-  '''Write transactions to screen'''
-  stdscr.erase()
-
-  if y >= 1:
-    stdscr.addnstr(0, 0, ntpath.basename(WALLETFILE), x, curses.color_pair(2))
-  if y >= 2:
-    width, _ = terminal_size()
-    width -= 5
-    ticks = [16,5,14,5,14,18,18]
-    scale = max(width / float(sum(ticks)),1.0)
-    ticks = [int(t * scale) for t in ticks]
-    header = '{:<%d} {:<%d} {:<%d} {:<%d} {:<%d} {:<%d} {:>%d}' % tuple(ticks)
-    header = header.format(
-      'DATE', 'OUT', 'AMOUNT', 'IN', 'AMOUNT', 'RATE OUT/IN', 'RATE  IN/OUT')
-    stdscr.addnstr(1, 0, header, x, curses.color_pair(1))
-
-
-  dates = list(ledger.keys())
-  transactions = list(ledger.values())
-
-  if transactions:
-    if y > 3:
-      counter = 0
-      ticks = [17,10,11,8,12,12,12]
-      scale = max(width / float(sum(ticks)),1.0)
-      ticks = [int(t * scale) for t in ticks]
-      header = '{:<%d} {:>%d} {:>%d.6f} {:>%d} {:>%d.6f} {:>%d.6f} {}/{} {:>%d.6f} {}/{}' % tuple(ticks)
-      for date, transaction in list(zip(dates, transactions)):
-        info = transaction.split(',')
-        printme = header.format(
-          date, info[0], float(info[1]), info[2], float(info[3]),
-          float(info[1])/float(info[3]), info[0], info[2],
-          float(info[3])/float(info[1]), info[2], info[0])
-        stdscr.addnstr(dates.index(date) + 2, 0, printme, x, curses.color_pair(2 + counter % 2))
-        counter += 1
-
-  if y > len(transactions) + 3:
-    stdscr.addnstr(y - 1, 0,
-      '[V] View wallet [T] Add transaction [Q] Exit', x,
-      curses.color_pair(2))
-
-
 def mainc(stdscr):
   inp = 0
   wallet = read_wallet()
@@ -732,10 +621,7 @@ def mainc(stdscr):
     global VIEW
     while True:
       try:
-        if VIEW is 'WALLET':
-          write_scr(stdscr, wallet, y, x)
-        elif VIEW is 'LEDGER':
-          view_ledger(stdscr, ledger, x, y)
+        write_scr(stdscr, wallet, y, x)
       except curses.error:
         pass
 
@@ -802,6 +688,10 @@ def main():
 
   global CONFIG
   CONFIG = read_configuration(CONFFILE)
+
+  import _thread
+  update_coins()
+  _thread.start_new_thread(ticker, ())
 
   global FIAT, CURRENCYLIST, CURRENCY, SYMBOL, SYMBOLLIST
   FIAT = CONFIG['api'].get('currency', 'EUR')
