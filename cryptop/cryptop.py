@@ -191,7 +191,7 @@ def get_erc20_balance(token, address):
 tokens = {}
 def get_ethereum(address):
   import json
-  blacklist= ['IND','WRC','RST-P', 'ATM', 'JOT']
+  blacklist= ['IND','WRC','RST-P', 'ATM', 'JOT', 'DATA']
 
   global tokens, ethplorer_conn, etherscan_conn
   if not address in tokens:
@@ -286,6 +286,71 @@ def get_price(coin, curr=None):
   except:
     return last_price[coin]
 
+last_price = {}
+last_price_usd = {}
+name_map = {}
+def get_price_new(coin, curr=None):
+  if ',' in coin:
+    res = []
+    for c in coin.split(','):
+      res.extend(get_price(c, curr))
+    return res
+
+  if curr is None:
+    global CURRENCY
+    curr = CURRENCY
+
+  if not name_map:
+    r = requests.get('https://api.coinmarketcap.com/v1/ticker/?convert=USD&limit=9999')
+    for item in r.json():
+      name_map[item['symbol']] = item['name']
+
+  coin = coin.upper()
+  curr = curr.upper()
+
+  fmt = 'https://api.coinmarketcap.com/v1/ticker/{}/?convert=EUR'
+
+  if not coin in last_price.keys():
+    last_price[coin] = (0,0,0,0,0)
+  if not coin in last_price_usd.keys():
+    last_price_usd[coin] = (0,0,0,0,0)
+
+  if (not 'ETH' in last_price_usd or last_price_usd['ETH'] == 0) and curr == 'ETH':
+    get_price('ETH', 'USD')
+  if (not 'BTC' in last_price_usd or last_price_usd['BTC'] == 0) and curr == 'BTC':
+    get_price('BTC', 'USD')
+
+  try:
+    r = requests.get(fmt.format(name_map[coin]))
+  except requests.exceptions.RequestException:
+    return [last_price[coin]]
+
+  data = json.loads(r.text.replace('[','').replace(']',''))
+  #assert False, str(data.keys()) + ' ' + data['price_usd'] ##['price_usd'] #.keys()
+
+  if not 'price_usd' in data.keys():
+    return [last_price[coin]]
+  
+  price, volume, c1h, c24h, c7d = data['price_usd'], data['24h_volume_usd'], data['percent_change_1h'], data['percent_change_24h'], data['percent_change_7d']
+  last_price_usd[coin] = (price,volume,c1h,c24h,c7d)
+  if curr == 'EUR':
+    price, volume = data['price_eur'], data['24h_volume_eur']
+  elif curr != 'USD':
+    price /= last_price_usd[curr][0]
+
+  try:
+    price, volume, c1h, c24h, c7d = data['price_usd'], data['24h_volume_usd'], data['percent_change_1h'], data['percent_change_24h'], data['percent_change_7d']
+    last_price_usd[coin] = (price,volume,c1h,c24h,c7d)
+    if curr == 'EUR':
+      price, volume = data['price_eur'], data['24h_volume_eur']
+    elif curr != 'USD':
+      price /= last_price_usd[curr][0]
+      volume /= last_price_usd[curr][1]
+      c1h,c24h,c7d = data['percent_change_1h'] / last_price_usd[curr][2], data['percent_change_24h'] / last_price_usd[curr][3], data['percent_change_7d'] / last_price_usd[curr][4]    
+    last_price[coin] = (price,volume,c1h,c23h,c7d)
+    return [last_price[coin]]
+  except:
+    return [last_price[coin]]
 
 def get_theme_colors():
   ''' Returns curses colors according to the config'''
