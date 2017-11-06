@@ -424,9 +424,9 @@ def str_formatter(coin, val, held, ticks):
 def write_coins(name, coins, held, stdscr, x, y, off=0):
   width, _ = terminal_size()
   width -= 5
-  ticks = [17,15,15,15,15,15,15,15]
-  diffs = [0,0,2,2,3,3,3,3]
-  scale = max(width / float(sum(ticks)),1.0)
+  ticks = [17,14,14,14,14,14,14,14]
+  diffs = [0,0,2,2,2,3,3,3]
+  scale = max(width / float(sum(ticks)), 1.0)
   hticks = [int(t * scale) for t in ticks]
   sticks = [int(t * scale - d) for t,d in zip(ticks,diffs)]
   total = 0
