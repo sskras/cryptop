@@ -96,11 +96,27 @@ def update_coins():
     if item['symbol'] in coinmap and coinmap[item['symbol']] != item['id']:
       continue
     coinstats[item['symbol']] = item
+  from datetime import date, timedelta
+  for fiat in ['EUR']:
+    if not fiat in coinstats.keys():
+      coinstats[fiat] = {}
+    #r1h = requests.get('https://min-api.cryptocompare.com/data/pricemultifull?fsyms=%s&tsyms=USD' % fiat).json()['RAW'][fiat]['USD']
+    coinstats[fiat]['price_usd'] = float(coinstats['BTC']['price_usd']) / float(coinstats['BTC']['price_eur'])
+    coinstats[fiat]['percent_change_1h'] = 0 #r1h['CHANGEPCT24HOUR'] 
+
+    d24h = date.today() - timedelta(1)
+    r24h = 1. / requests.get('https://api.fixer.io/' + d24h.strftime('%Y-%m-%d') + '?base=USD').json()['rates'][fiat]
+    coinstats[fiat]['percent_change_24h'] = 100. - 100. * r24h / coinstats[fiat]['price_usd']
+  
+    d7d = date.today() - timedelta(7)
+    r7d = 1. / requests.get('https://api.fixer.io/' + d7d.strftime('%Y-%m-%d') + '?base=USD').json()['rates'][fiat]
+    coinstats[fiat]['percent_change_7d'] = 100. - 100. * r7d / coinstats[fiat]['price_usd']
+  
 
 def ticker():
   import time
   while True:
-    time.sleep(10)
+    time.sleep(15)
     update_coins()
 
 bittrex = {}
@@ -333,11 +349,12 @@ def get_price(coin, curr=None):
     tok = coinstats[v]
     sf = lambda x: float(x) if x is not None else 0
     price, volume, c1h, c24h, c7d = sf(tok['price_usd']), sf(tok['24h_volume_usd']), sf(tok['percent_change_1h'])/100., sf(tok['percent_change_24h'])/100., sf(tok['percent_change_7d'])/100.
-    if curr == 'EUR':
-      price, volume = sf(tok['price_eur']), sf(tok['24h_volume_eur'])
-    elif curr != 'USD':
-      price /= sf(coinstats[curr]['price_usd'])
-      volume = sf(coinstats[curr]['24h_volume_usd']) * price
+    if curr != 'USD':
+      if curr == 'EUR':
+        price, volume = sf(tok['price_eur']), sf(tok['24h_volume_eur'])
+      else:
+        price /= sf(coinstats[curr]['price_usd'])
+        volume = sf(coinstats[curr]['24h_volume_usd']) * price
       p1h = sf(tok['price_usd']) * (1.+sf(tok['percent_change_1h'])/100.)
       p1h /= sf(coinstats[curr]['price_usd']) * (1.+sf(coinstats[curr]['percent_change_1h'])/100.)
       p24h = sf(tok['price_usd']) * (1.+sf(tok['percent_change_24h'])/100.)
