@@ -113,8 +113,7 @@ def update_bittrex(key, secret):
       url = "https://bittrex.com/api/v1.1/account/getbalances?apikey=%s&nonce=%d&" % (key, int(time.time() * 1000))
       ret = requests.get(url,
           headers={"apisign": hmac.new(secret.encode(), url.encode(), hashlib.sha512).hexdigest()},
-          timeout=5
-      ).json()
+          timeout=5).json()
       bittrex[key] = ret
     except:
       if not key in bittrex.keys():
@@ -327,20 +326,26 @@ def get_price(coin, curr=None):
     curr = CURRENCY
 
   res = []
-  for tok in coin.split(','):
-    if not tok in coinstats.keys():
-      #assert tok in coinstats.keys(), "%s not listed on CMC" % tok
+  for v in coin.split(','):
+    if not v in coinstats.keys():
+      res.append((0,0,0,0,0))
       continue
-    tok = coinstats[tok]
-    sf = lambda x: float(x or 0)
-    price, volume, c1h, c24h, c7d = sf(tok['price_usd']), sf(tok['24h_volume_usd']), sf(tok['percent_change_1h']), sf(tok['percent_change_24h']), sf(tok['percent_change_7d'])
+    tok = coinstats[v]
+    sf = lambda x: float(x) if x is not None else 0
+    price, volume, c1h, c24h, c7d = sf(tok['price_usd']), sf(tok['24h_volume_usd']), sf(tok['percent_change_1h'])/100., sf(tok['percent_change_24h'])/100., sf(tok['percent_change_7d'])/100.
     if curr == 'EUR':
       price, volume = sf(tok['price_eur']), sf(tok['24h_volume_eur'])
     elif curr != 'USD':
       price /= sf(coinstats[curr]['price_usd'])
-      volume /= sf(coinstats[curr]['24h_volume_usd'])
-      c1h,c24h,c7d = sf(tok['percent_change_1h']) / sf(coinstats[curr]['percent_change_1h']), sf(tok['percent_change_24h']) / sf(coinstats[curr]['percent_change_24h']), sf(tok['percent_change_7d']) / sf(coinstats[curr]['percent_change_7d'])
-    res.append((price,volume,c1h,c24h,c7d))
+      volume = sf(coinstats[curr]['24h_volume_usd']) * price
+      p1h = sf(tok['price_usd']) * (1.+sf(tok['percent_change_1h'])/100.)
+      p1h /= sf(coinstats[curr]['price_usd']) * (1.+sf(coinstats[curr]['percent_change_1h'])/100.)
+      p24h = sf(tok['price_usd']) * (1.+sf(tok['percent_change_24h'])/100.)
+      p24h /= sf(coinstats[curr]['price_usd']) * (1.+sf(coinstats[curr]['percent_change_24h'])/100.)
+      p7d = sf(tok['price_usd']) * (1.+sf(tok['percent_change_7d'])/100.)
+      p7d /= sf(coinstats[curr]['price_usd']) * (1.+sf(coinstats[curr]['percent_change_7d'])/100.)
+      c1h,c24h,c7d = 1. - price / p1h, 1 - price / p24h, 1 - price / p7d
+    res.append((price, volume, c1h * 100, c24h * 100, c7d * 100))
   return res
 
 def get_theme_colors():
@@ -419,7 +424,7 @@ def str_formatter(coin, val, held, ticks):
 def write_coins(name, coins, held, stdscr, x, y, off=0):
   width, _ = terminal_size()
   width -= 5
-  ticks = [15,15,15,15,15,15,15,15]
+  ticks = [17,15,15,15,15,15,15,15]
   diffs = [0,0,2,2,3,3,3,3]
   scale = max(width / float(sum(ticks)),1.0)
   hticks = [int(t * scale) for t in ticks]
@@ -454,8 +459,12 @@ def write_coins(name, coins, held, stdscr, x, y, off=0):
 
   if y > off:
     header = '{:<%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
-    header = header.format(
-      name + ' ({:.2f})'.format(total), 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', 'VOLUME', 'HOURLY', 'DAILY', 'WEEKLY')
+    if off == 0:
+      header = header.format(
+        name + ' ({:.2f})'.format(total), 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', 'VOLUME', 'HOURLY', 'DAILY', 'WEEKLY')
+    else:
+      header = header.format(
+        name + ' ({:.2f})'.format(total), '', '', '', '', '', '', '')
     stdscr.addnstr(off, 0, header, x, curses.color_pair(1))
 
   return total
@@ -477,9 +486,9 @@ def write_scr(stdscr, wallet, y, x):
       held['bittrex'] = [ c['Balance'] for c in balance['result'] if c['Balance'] >= 0.01 ]
     elif heldl[i].lower().startswith('0x'):
       tokens = get_ethereum(heldl[i])
-      coin[coinl[i].lower()] = [ tok for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() ]
-      held[coinl[i].lower()] = [ tokens[heldl[i]][tok] for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() ]
-    else:
+      coin[coinl[i].lower()] = [ tok for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() and tokens[heldl[i]][tok] >= 0.01 ]
+      held[coinl[i].lower()] = [ tokens[heldl[i]][tok] for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() and tokens[heldl[i]][tok] >= 0.01 ]
+    elif float(heldl[i]) >= 0.01:
       coin['custom'].append(coinl[i])
       held['custom'].append(float(heldl[i]))
 
@@ -574,31 +583,6 @@ def add_coin(coin_amount, wallet):
   wallet[coin] = amount
   return wallet
 
-
-def add_transaction(transaction, wallet, ledger):
-  ''' Add a transaction to ledger and update wallet accordingly '''
-
-  transaction = transaction.upper()
-  if not COIN_FORMAT.match(transaction):
-    return wallet, ledger
-
-  coin_out, amount_out, coin_in, amount_in = transaction.split(',')
-  if (not if_coin(coin_out)) or (not if_coin(coin_out)):
-    return wallet, ledger
-
-  # Add transaction to ledger
-  now = datetime.datetime.now()
-  ledger[now.strftime("%Y-%m-%d %H:%M")] = transaction
-
-  # Update wallet
-  current_amount_coin_out = float(wallet[coin_out])
-  current_amount_coin_in = float(wallet[coin_in])
-  wallet[coin_out] = current_amount_coin_out - float(amount_out)
-  wallet[coin_in] = current_amount_coin_in + float(amount_in)
-
-  return wallet, ledger
-
-
 def remove_coin(coin, wallet):
   ''' Remove a coin and its amount from the wallet '''
   # coin = '' if window is resized while waiting for string
@@ -673,12 +657,6 @@ def mainc(stdscr):
         wallet, ledger = add_transaction(data, wallet, ledger)
         write_wallet(wallet)
         write_ledger(ledger)
-
-    if inp in {KEY_v, KEY_V}:
-      if VIEW is 'WALLET':
-        VIEW = 'LEDGER'
-      elif VIEW is 'LEDGER':
-        VIEW = 'WALLET'
 
 
 def main():
