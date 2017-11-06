@@ -107,7 +107,7 @@ bittrex = {}
 bittrex_time = 0
 def update_bittrex(key, secret):
   global bittrex_time
-  if time.time() - bittrex_time > 10:
+  if time.time() - bittrex_time > 15:
     bittrex_time = time.time()
     try:
       url = "https://bittrex.com/api/v1.1/account/getbalances?apikey=%s&nonce=%d&" % (key, int(time.time() * 1000))
