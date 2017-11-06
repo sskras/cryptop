@@ -416,16 +416,17 @@ def terminal_size():
 def str_formatter(coin, val, held, ticks):
   '''Prepare the coin strings as per ini length/decimal place values'''
   global SYMBOL
+  global CURRENCY
   ticks = { "t%d" % i : t for i,t in enumerate(ticks) }
   return '{:<{t0}} {:>{t1}.2f} {:>{t2}.{prec}f} {} {:>{t3}.{prec}f} {} {:>{t5}.3f}M {}'.format(
     coin, float(held), val[0], SYMBOL, float(held)*val[0],
-    SYMBOL, val[1] / 1e6, SYMBOL, prec=NROFDECIMALS,**ticks)
+    SYMBOL, val[1] / 1e6, SYMBOL, prec=2 if CURRENCY in ['EUR','USD'] else NROFDECIMALS,**ticks)
 
 def write_coins(name, coins, held, stdscr, x, y, off=0):
   width, _ = terminal_size()
   width -= 5
-  ticks = [15,12,12,12,12,12,12,12]
-  diffs = [0,0,2,2,2,-2,3,3]
+  ticks = [8,12,12,12,12,12,12,12]
+  diffs = [0,0,2,2,2,3,3,3]
   scale = max(width / float(sum(ticks)), 1.0)
   hticks = [int(t * scale) for t in ticks]
   sticks = [int(t * scale - d) for t,d in zip(ticks,diffs)]
