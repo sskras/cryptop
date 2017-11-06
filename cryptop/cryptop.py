@@ -424,8 +424,8 @@ def str_formatter(coin, val, held, ticks):
 def write_coins(name, coins, held, stdscr, x, y, off=0):
   width, _ = terminal_size()
   width -= 5
-  ticks = [10,13,13,13,13,13,13,13]
-  diffs = [0,0,2,2,2,3,3,3]
+  ticks = [15,12,12,12,12,12,12,12]
+  diffs = [0,0,2,2,2,-2,3,3]
   scale = max(width / float(sum(ticks)), 1.0)
   hticks = [int(t * scale) for t in ticks]
   sticks = [int(t * scale - d) for t,d in zip(ticks,diffs)]
@@ -445,15 +445,13 @@ def write_coins(name, coins, held, stdscr, x, y, off=0):
         else:
           stdscr.addnstr(off + coinb.index(coin) + 1, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(8 + counter % 2))
         for i in [2,3,4]:
+          xs = hticks[0] + hticks[1] + 1 + (3+i-2)*(hticks[2]+1)
           if val[i] > 0:
-            stdscr.addnstr(off + coinb.index(coin) + 1, hticks[0] + hticks[1] + 1 + (3+i-2)*(hticks[2]+1),
-            '  {:>{t6}.2f} %'.format(val[i], t6=sticks[-1]), x, curses.color_pair(4 + counter % 2))
+            stdscr.addnstr(off + coinb.index(coin) + 1, xs, '  {:>{t6}.2f} %'.format(val[i], t6=sticks[-1]), x, curses.color_pair(4 + counter % 2))
           elif val[i] < 0:
-            stdscr.addnstr(off + coinb.index(coin) + 1, hticks[0] + hticks[1] + 1 + (3+i-2)*(hticks[2]+1),
-            '  {:>{t6}.2f} %'.format(val[i], t6=sticks[-1]), x, curses.color_pair(6 + counter % 2))
+            stdscr.addnstr(off + coinb.index(coin) + 1, xs, '  {:>{t6}.2f} %'.format(val[i], t6=sticks[-1]), x, curses.color_pair(6 + counter % 2))
           else:
-            stdscr.addnstr(off + coinb.index(coin) + 1, hticks[0] + hticks[1] + 1 + (3+i-2)*(hticks[2]+1),
-            '  {:>{t6}.2f} %'.format(val[i], t6=sticks[-1]), x, curses.color_pair(2 + counter % 2))
+            stdscr.addnstr(off + coinb.index(coin) + 1, xs, '  {:>{t6}.2f} %'.format(val[i], t6=sticks[-1]), x, curses.color_pair(2 + counter % 2))
       total += float(held) * val[0]
       counter += 1
 
@@ -461,7 +459,7 @@ def write_coins(name, coins, held, stdscr, x, y, off=0):
     header = '{:<%d} {:>%d.2f} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
     if off == 0:
       header = header.format(
-        name, total, 'CURRENT PRICE', 'TOTAL VALUE', 'VOLUME', 'HOURLY', 'DAILY', 'WEEKLY')
+        name, total, 'PRICE', 'TOTAL', 'VOLUME', 'HOURLY', 'DAILY', 'WEEKLY')
     else:
       header = header.format(
         name, total, '', '', '', '', '', '', '')
