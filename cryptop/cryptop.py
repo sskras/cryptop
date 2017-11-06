@@ -457,13 +457,14 @@ def write_coins(name, coins, held, stdscr, x, y, off=0):
       counter += 1
 
   if y > off:
-    header = '{:<%d} {:>%d.2f} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
+    global SYMBOL
+    header = '{:<%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
     if off == 0:
       header = header.format(
-        name, total, 'PRICE', 'TOTAL', 'VOLUME', 'HOURLY', 'DAILY', 'WEEKLY')
+        name, ("%.2f " % total) + SYMBOL, 'PRICE', 'TOTAL', 'VOLUME', 'HOURLY', 'DAILY', 'WEEKLY')
     else:
       header = header.format(
-        name, total, '', '', '', '', '', '', '')
+        name, ("%.2f " % total) + SYMBOL, '', '', '', '', '', '', '')
     stdscr.addnstr(off, 0, header, x, curses.color_pair(1))
 
   return total
