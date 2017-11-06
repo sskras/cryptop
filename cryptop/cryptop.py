@@ -424,7 +424,7 @@ def str_formatter(coin, val, held, ticks):
 def write_coins(name, coins, held, stdscr, x, y, off=0):
   width, _ = terminal_size()
   width -= 5
-  ticks = [17,13,13,13,13,13,13,13]
+  ticks = [10,13,13,13,13,13,13,13]
   diffs = [0,0,2,2,2,3,3,3]
   scale = max(width / float(sum(ticks)), 1.0)
   hticks = [int(t * scale) for t in ticks]
@@ -458,13 +458,13 @@ def write_coins(name, coins, held, stdscr, x, y, off=0):
       counter += 1
 
   if y > off:
-    header = '{:<%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
+    header = '{:<%d} {:>%d.2f} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d} {:>%d}' % tuple(hticks)
     if off == 0:
       header = header.format(
-        name + ' ({:.2f})'.format(total), 'HODLING', 'CURRENT PRICE', 'TOTAL VALUE', 'VOLUME', 'HOURLY', 'DAILY', 'WEEKLY')
+        name, total, 'CURRENT PRICE', 'TOTAL VALUE', 'VOLUME', 'HOURLY', 'DAILY', 'WEEKLY')
     else:
       header = header.format(
-        name + ' ({:.2f})'.format(total), '', '', '', '', '', '', '')
+        name, total, '', '', '', '', '', '', '')
     stdscr.addnstr(off, 0, header, x, curses.color_pair(1))
 
   return total
