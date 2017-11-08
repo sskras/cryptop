@@ -102,16 +102,18 @@ def update_coins():
       coinstats[fiat] = {}
     #r1h = requests.get('https://min-api.cryptocompare.com/data/pricemultifull?fsyms=%s&tsyms=USD' % fiat).json()['RAW'][fiat]['USD']
     coinstats[fiat]['price_usd'] = float(coinstats['BTC']['price_usd']) / float(coinstats['BTC']['price_eur'])
-    coinstats[fiat]['percent_change_1h'] = 0 #r1h['CHANGEPCT24HOUR'] 
+    coinstats[fiat]['percent_change_1h'] = 0 #r1h['CHANGEPCT24HOUR']
 
-    d24h = date.today() - timedelta(1)
-    r24h = 1. / requests.get('https://api.fixer.io/' + d24h.strftime('%Y-%m-%d') + '?base=USD').json()['rates'][fiat]
-    coinstats[fiat]['percent_change_24h'] = 100. - 100. * r24h / coinstats[fiat]['price_usd']
-  
-    d7d = date.today() - timedelta(7)
-    r7d = 1. / requests.get('https://api.fixer.io/' + d7d.strftime('%Y-%m-%d') + '?base=USD').json()['rates'][fiat]
-    coinstats[fiat]['percent_change_7d'] = 100. - 100. * r7d / coinstats[fiat]['price_usd']
-  
+    try:
+      d24h = date.today() - timedelta(1)
+      r24h = 1. / requests.get('https://api.fixer.io/' + d24h.strftime('%Y-%m-%d') + '?base=USD').json()['rates'][fiat]
+      coinstats[fiat]['percent_change_24h'] = 100. - 100. * r24h / coinstats[fiat]['price_usd']
+
+      d7d = date.today() - timedelta(7)
+      r7d = 1. / requests.get('https://api.fixer.io/' + d7d.strftime('%Y-%m-%d') + '?base=USD').json()['rates'][fiat]
+      coinstats[fiat]['percent_change_7d'] = 100. - 100. * r7d / coinstats[fiat]['price_usd']
+    except:
+      continue
 
 def ticker():
   import time
