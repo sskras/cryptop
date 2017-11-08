@@ -27,15 +27,14 @@ import json
 # GLOBALS!
 BASEDIR = os.path.join(os.path.expanduser('~'), '.cryptop')
 WALLETFILE = os.path.join(BASEDIR, 'wallet.json')
-LEDGERFILE = os.path.join(BASEDIR, 'ledger.json')
 CONFFILE = os.path.join(BASEDIR, 'config.ini')
 CONFIG = configparser.ConfigParser()
 COIN_FORMAT = re.compile('[A-Z]{2,5},\d{0,}\.?\d{0,}')
 
 SORT_FNS = { 'coin' : lambda item: item[0],
-       'price': lambda item: float(item[1][0]),
-       'held' : lambda item: float(item[2]),
-       'val'  : lambda item: float(item[1][0]) * float(item[2]) }
+             'price': lambda item: float(item[1][0]),
+             'held' : lambda item: float(item[2]),
+             'val'  : lambda item: float(item[1][0]) * float(item[2]) }
 SORTS = list(SORT_FNS.keys())
 COLUMN = SORTS.index('val')
 ORDER = True
@@ -463,7 +462,7 @@ def write_coins(name, coins, held, stdscr, x, y, off=0):
         if float(held) > 0.0:
           stdscr.addnstr(off + coinb.index(coin) + 1, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(2 + counter % 2))
         else:
-          stdscr.addnstr(off + coinb.index(coin) + 1, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(8 + counter % 2))
+          stdscr.addnstr(off + coinb.index(coin) + 1, 0, str_formatter(coin, val, held, sticks), x, curses.color_pair(2 + counter % 2))
         for i in [2,3,4]:
           xs = hticks[0] + hticks[1] + 1 + (3+i-2)*(hticks[2]+1)
           if val[i] > 0:
@@ -495,11 +494,11 @@ def write_scr(stdscr, wallet, y, x):
   coinl = list(wallet.keys())
   heldl = list(wallet.values())
 
-  coin = { 'custom' : [] }
-  held = { 'custom' : [] }
+  coin = { 'custom' : [], 'ticker' : [] }
+  held = { 'custom' : [], 'ticker' : [] }
 
   for i in range(len(coinl)):
-    if coinl[i] == 'bittrex':
+    if coinl[i].lower() == 'bittrex':
       balance = update_bittrex(*heldl[i].split(':'))
       coin['bittrex'] = [ c['Currency'].replace('BCC','BCH') for c in balance['result'] if c['Balance'] >= 0.01 ]
       held['bittrex'] = [ c['Balance'] for c in balance['result'] if c['Balance'] >= 0.01 ]
@@ -510,17 +509,19 @@ def write_scr(stdscr, wallet, y, x):
     elif float(heldl[i]) >= 0.01:
       coin['custom'].append(coinl[i])
       held['custom'].append(float(heldl[i]))
+    else:
+      coin['ticker'].append(coinl[i])
+      held['ticker'].append(0)
 
   off = 0
   stdscr.erase()
-  if 'custom' in coin and coin['custom']:
-    total += write_coins('CUSTOM', coin['custom'], held['custom'], stdscr, x, y, off)
-    off += len(coin['custom']) + 1
-  if 'bittrex' in coin and coin['bittrex']:
-    total += write_coins('BITTREX', coin['bittrex'], held['bittrex'], stdscr, x, y, off)
-    off += len(coin['bittrex']) + 1
+  default_keys = ['ticker', 'custom', 'bittrex', 'etherdelta']
+  for key in default_keys:
+    if key in coin and coin[key]:
+      total += write_coins(key.upper(), coin[key], held[key], stdscr, x, y, off)
+      off += len(coin[key]) + 1
   for key in coin.keys():
-    if key not in ['custom', 'bittrex']:
+    if key not in default_keys and coin[key]:
       total += write_coins(key.upper(), coin[key], held[key], stdscr, x, y, off)
       off += len(coin[key]) + 1
 
@@ -528,7 +529,7 @@ def write_scr(stdscr, wallet, y, x):
     stdscr.addnstr(y - 2, 0, 'Total Holdings: {:10.2f} {}  '
       .format(total, CURRENCY), x, curses.color_pair(11))
     stdscr.addnstr(y - 1, 0,
-      '[A] Add coin [R] Remove coin [T] Add transaction [F] Switch FIAT/ETH [S] Sort [C] Cycle sort [Q] Exit', x,
+      '[A] Add coin [R] Remove coin [F] Switch FIAT/ETH [S] Sort [C] Cycle sort [Q] Exit', x,
       curses.color_pair(2))
 
 
@@ -536,32 +537,16 @@ def read_wallet():
   ''' Reads the wallet data from its json file '''
   try:
     with open(WALLETFILE, 'r') as f:
-      return json.load(f)
+      return {k.upper():v for k,v in json.load(f).items()}
   except (FileNotFoundError, ValueError):
     # missing or malformed wallet
     write_wallet({})
-    return {}
-
-def read_ledger():
-  ''' Reads the transaction ledger data from its json file '''
-  try:
-    with open(LEDGERFILE, 'r') as f:
-      return json.load(f)
-  except (FileNotFoundError, ValueError):
-    # missing or malformed wallet
-    write_ledger({})
     return {}
 
 def write_wallet(wallet):
   ''' Writes the wallet data to its json file '''
   with open(WALLETFILE, 'w') as f:
     json.dump(wallet, f)
-
-def write_ledger(ledger):
-  ''' Writes the ledger data to its json file '''
-  with open(LEDGERFILE, 'w') as f:
-    json.dump(ledger, f)
-
 
 def get_string(stdscr, prompt):
   '''Requests and string from the user'''
@@ -579,41 +564,25 @@ def get_string(stdscr, prompt):
 
 
 def add_coin(coin_amount, wallet):
-  ''' Add a coin and its amount to the wallet '''
-  if not ',' in coin_amount and coin_amount.lower().strip().startswith('0x'):
-    coin = coin_amount.lower().strip()
-    amount = 0
-  elif not ',' in coin_amount and coin_amount.lower().strip().startswith('etherdelta:'):
-    coin = coin_amount.lower().strip()
-    amount = 0
-  elif coin_amount.split(',')[-1].lower().strip().startswith('0x'):
-    coin, amount = coin_amount.split(',')
-    coin = coin.upper()
-  elif coin_amount.startswith('bittrex:'):
-    coin, amount = coin_amount.split(',')
-  else:
-    coin_amount = coin_amount.upper()
-    if not COIN_FORMAT.match(coin_amount):
-      return wallet
-    coin, amount = coin_amount.split(',')
-    if not if_coin(coin):
-      return wallet
-
-  wallet[coin] = amount
+  if not coin_amount.strip():
+    return wallet
+  if not ',' in coin_amount:
+    coin_amount = "%s,%d" % (coin_amount, 0)
+  coin,amount = coin_amount.split(',')
+  wallet[coin.upper()] = amount
   return wallet
 
 def remove_coin(coin, wallet):
   ''' Remove a coin and its amount from the wallet '''
   # coin = '' if window is resized while waiting for string
   if coin:
-    coin = coin.lower()
+    coin = coin.upper()
     wallet.pop(coin, None)
   return wallet
 
 def mainc(stdscr):
   inp = 0
   wallet = read_wallet()
-  ledger = read_ledger()
   y, x = stdscr.getmaxyx()
   conf_scr()
   stdscr.bkgd(' ', curses.color_pair(2))
@@ -636,14 +605,14 @@ def mainc(stdscr):
     if inp in {KEY_a, KEY_A}:
       if y > 2:
         data = get_string(stdscr,
-          'Enter in format Symbol,Amount e.g. BTC,10')
+          'Enter in format Symbol,Amount e.g. BTC,10 or Name,Address e.g. TREZOR,0xab5801a7d398351b8be11c439e05c5b3259aec9b')
         wallet = add_coin(data, wallet)
         write_wallet(wallet)
 
     if inp in {KEY_r, KEY_R}:
       if y > 2:
         data = get_string(stdscr,
-          'Enter the symbol of coin to be removed, e.g. BTC')
+          'Enter coin or address to be removed, e.g. BTC')
         wallet = remove_coin(data, wallet)
         write_wallet(wallet)
 
@@ -668,14 +637,6 @@ def mainc(stdscr):
           NROFDECIMALS = 2
         else:
           NROFDECIMALS = 6
-
-    if inp in {KEY_t, KEY_T}:
-      if y > 2:
-        data = get_string(stdscr,
-          'Enter transaction (Out,Amount,In,Amount), e.g. BTC,10,ETH,10')
-        wallet, ledger = add_transaction(data, wallet, ledger)
-        write_wallet(wallet)
-        write_ledger(ledger)
 
 
 def main():
