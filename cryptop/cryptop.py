@@ -498,8 +498,8 @@ def write_scr(stdscr, wallet, y, x):
   coinl = list(wallet.keys())
   heldl = list(wallet.values())
 
-  coin = { 'custom' : [], 'ticker' : [] }
-  held = { 'custom' : [], 'ticker' : [] }
+  coin = { 'custom' : [], '' : [] }
+  held = { 'custom' : [], '' : [] }
 
   for i in range(len(coinl)):
     if coinl[i].lower() == 'bittrex':
@@ -519,7 +519,7 @@ def write_scr(stdscr, wallet, y, x):
 
   off = 0
   stdscr.erase()
-  default_keys = ['ticker', 'custom', 'bittrex', 'etherdelta']
+  default_keys = ['', 'custom', 'bittrex', 'etherdelta']
   for key in default_keys:
     if key in coin and coin[key]:
       total += write_coins(key.upper(), coin[key], held[key], stdscr, x, y, off)
