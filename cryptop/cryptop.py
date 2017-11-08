@@ -436,9 +436,15 @@ def str_formatter(coin, val, held, ticks):
   global SYMBOL
   global CURRENCY
   ticks = { "t%d" % i : t for i,t in enumerate(ticks) }
-  return '{:<{t0}} {:>{t1}.2f} {:>{t2}.{prec}f} {} {:>{t3}.{prec}f} {} {:>{t5}.3f}M {}'.format(
-    coin, float(held), val[0], SYMBOL, float(held)*val[0],
-    SYMBOL, val[1] / 1e6, SYMBOL, prec=2 if CURRENCY in ['EUR','USD'] else NROFDECIMALS,**ticks)
+  if held > 0:
+    return '{:<{t0}} {:>{t1}.2f} {:>{t2}.{prec}f} {} {:>{t3}.{prec}f} {} {:>{t5}.3f}M {}'.format(
+      coin, float(held), val[0], SYMBOL, float(held)*val[0],
+      SYMBOL, val[1] / 1e6, SYMBOL, prec=2 if CURRENCY in ['EUR','USD'] else NROFDECIMALS,**ticks)
+  else:
+    ticks['t5'] += 2
+    return '{:<{t0}} {:>{t1}} {:>{t2}.{prec}f} {} {:>{t3}} {:>{t5}.3f}M {}'.format(
+      coin, '', val[0], SYMBOL, '', val[1] / 1e6, SYMBOL,
+      prec=2 if CURRENCY in ['EUR','USD'] else NROFDECIMALS,**ticks)
 
 def write_coins(name, coins, held, stdscr, x, y, off=0):
   width, _ = terminal_size()
