@@ -514,8 +514,8 @@ def write_scr(stdscr, wallet, y, x):
       coin['custom'].append(coinl[i])
       held['custom'].append(float(heldl[i]))
     else:
-      coin['ticker'].append(coinl[i])
-      held['ticker'].append(0)
+      coin[''].append(coinl[i])
+      held[''].append(0)
 
   off = 0
   stdscr.erase()
