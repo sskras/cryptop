@@ -520,7 +520,7 @@ def write_scr(stdscr, wallet, y, x):
     if key in coin and coin[key]:
       total += write_coins(key.upper(), coin[key], held[key], stdscr, x, y, off)
       off += len(coin[key]) + 1
-  for key in coin.keys():
+  for key in sorted(coin.keys()):
     if key not in default_keys and coin[key]:
       total += write_coins(key.upper(), coin[key], held[key], stdscr, x, y, off)
       off += len(coin[key]) + 1
