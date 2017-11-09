@@ -131,10 +131,11 @@ def update_bittrex(key, secret):
       ret = requests.get(url,
           headers={"apisign": hmac.new(secret.encode(), url.encode(), hashlib.sha512).hexdigest()},
           timeout=5).json()
-      bittrex[key] = ret
+      if 'result' in ret:
+        bittrex[key] = ret
     except:
       if not key in bittrex.keys():
-        bittrex[key] = {'result' : []}
+        bittrex[key] = { 'result' : [] }
   return bittrex[key]
 
 erc20_block = {}
@@ -572,7 +573,6 @@ def get_string(stdscr, prompt):
   curses.halfdelay(10)
   return in_str
 
-
 def add_coin(coin_amount, wallet):
   if not coin_amount.strip():
     return wallet
@@ -597,8 +597,6 @@ def mainc(stdscr):
   conf_scr()
   stdscr.bkgd(' ', curses.color_pair(2))
   stdscr.clear()
-  #stdscr.nodelay(1)
-  # while inp != 48 and inp != 27 and inp != 81 and inp != 113:
   while inp not in {KEY_ZERO, KEY_ESCAPE, KEY_Q, KEY_q}:
     global VIEW
     while True:
