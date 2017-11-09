@@ -131,7 +131,7 @@ def update_bittrex(key, secret):
       ret = requests.get(url,
           headers={"apisign": hmac.new(secret.encode(), url.encode(), hashlib.sha512).hexdigest()},
           timeout=5).json()
-      if 'result' in ret:
+      if 'result' in ret and ret['result'] is not None:
         bittrex[key] = ret
     except:
       if not key in bittrex.keys():
