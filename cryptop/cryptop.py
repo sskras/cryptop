@@ -53,6 +53,8 @@ NROFDECIMALS = 2
 BALANCE_TIME = 0
 
 KEY_ESCAPE = 27
+KEY_ENTER = 13
+KEY_BACKSPACE = 8
 KEY_SPACE = 32
 KEY_ZERO = 48
 KEY_A = 65
@@ -613,14 +615,14 @@ def mainc(stdscr):
         break
       y, x = stdscr.getmaxyx()
 
-    if inp in {KEY_a, KEY_A}:
+    if inp in {KEY_a, KEY_A, KEY_ENTER}:
       if y > 2:
         data = get_string(stdscr,
-          'Enter in format Symbol,Amount e.g. BTC,10 or Name,Address e.g. TREZOR,0xab5801a7d398351b8be11c439e05c5b3259aec9b')
+          'Enter in format Symbol e.g. ETH or Symbol,Amount e.g. BTC,10 or Name,Address e.g. TREZOR,0xab5801a7d398351b8be11c439e05c5b3259aec9b')
         wallet = add_coin(data, wallet)
         write_wallet(wallet)
 
-    if inp in {KEY_r, KEY_R}:
+    if inp in {KEY_r, KEY_R, KEY_BACKSPACE}:
       if y > 2:
         data = get_string(stdscr,
           'Enter coin or address to be removed, e.g. BTC')
