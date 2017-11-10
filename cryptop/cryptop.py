@@ -99,14 +99,12 @@ def update_coins():
   for fiat in ['EUR']:
     if not fiat in coinstats.keys():
       coinstats[fiat] = {}
-    #r1h = requests.get('https://min-api.cryptocompare.com/data/pricemultifull?fsyms=%s&tsyms=USD' % fiat).json()['RAW'][fiat]['USD']
     coinstats[fiat]['price_usd'] = float(coinstats['BTC']['price_usd']) / float(coinstats['BTC']['price_eur'])
-    coinstats[fiat]['percent_change_1h'] = 0 #r1h['CHANGEPCT24HOUR']
-
     try:
       d24h = date.today() - timedelta(1)
       r24h = 1. / requests.get('https://api.fixer.io/' + d24h.strftime('%Y-%m-%d') + '?base=USD').json()['rates'][fiat]
       coinstats[fiat]['percent_change_24h'] = 100. - 100. * r24h / coinstats[fiat]['price_usd']
+      coinstats[fiat]['percent_change_1h'] = coinstats[fiat]['percent_change_24h'] / 24.
 
       d7d = date.today() - timedelta(7)
       r7d = 1. / requests.get('https://api.fixer.io/' + d7d.strftime('%Y-%m-%d') + '?base=USD').json()['rates'][fiat]
@@ -357,13 +355,11 @@ def get_price(coin, curr=None):
       else:
         price /= sf(coinstats[curr]['price_usd'])
         volume = sf(coinstats[curr]['24h_volume_usd']) * price
-      p1h = sf(tok['price_usd']) * (1.+sf(tok['percent_change_1h'])/100.)
-      p1h /= sf(coinstats[curr]['price_usd']) * (1.+sf(coinstats[curr]['percent_change_1h'])/100.)
-      p24h = sf(tok['price_usd']) * (1.+sf(tok['percent_change_24h'])/100.)
-      p24h /= sf(coinstats[curr]['price_usd']) * (1.+sf(coinstats[curr]['percent_change_24h'])/100.)
-      p7d = sf(tok['price_usd']) * (1.+sf(tok['percent_change_7d'])/100.)
-      p7d /= sf(coinstats[curr]['price_usd']) * (1.+sf(coinstats[curr]['percent_change_7d'])/100.)
-      c1h,c24h,c7d = 1. - price / p1h, 1 - price / p24h, 1 - price / p7d
+      s1h = sf(coinstats[curr]['percent_change_1h'])/100.
+      s24h = sf(coinstats[curr]['percent_change_24h'])/100.
+      s7d = sf(coinstats[curr]['percent_change_7d'])/100.
+      conv = lambda dx,dy: 1. - (1.-dx) / (1.-dy)
+      c1h,c24h,c7d = conv(c1h,s1h), conv(c24h,s24h), conv(c7d,s7d)
     res.append((price, volume, c1h * 100, c24h * 100, c7d * 100))
   return res
 
