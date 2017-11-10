@@ -53,6 +53,7 @@ NROFDECIMALS = 2
 BALANCE_TIME = 0
 
 KEY_ESCAPE = 27
+KEY_SPACE = 32
 KEY_ZERO = 48
 KEY_A = 65
 KEY_F = 70
@@ -636,7 +637,7 @@ def mainc(stdscr):
         global COLUMN
         COLUMN = (COLUMN + 1) % len(SORTS)
 
-    if inp in {KEY_f, KEY_F}:
+    if inp in {KEY_f, KEY_F, KEY_SPACE}:
       if y > 2:
         global CURRENCY, NROFDECIMALS, FIAT, CURRENCYCOUNTER, CURRENCYLIST, SYMBOL, SYMBOLLIST
         CURRENCYCOUNTER = (CURRENCYCOUNTER + 1) % len(CURRENCYLIST)
