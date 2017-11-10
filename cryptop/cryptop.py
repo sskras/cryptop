@@ -355,7 +355,7 @@ def get_price(coin, curr=None):
         price, volume = sf(tok['price_eur']), sf(tok['24h_volume_eur'])
       else:
         price /= sf(coinstats[curr]['price_usd'])
-        volume = sf(coinstats[curr]['24h_volume_usd']) * price
+        volume = sf(coinstats[curr]['24h_volume_usd']) / sf(coinstats[curr]['price_usd'])
       s1h = sf(coinstats[curr]['percent_change_1h'])/100.
       s24h = sf(coinstats[curr]['percent_change_24h'])/100.
       s7d = sf(coinstats[curr]['percent_change_7d'])/100.
