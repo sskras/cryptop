@@ -28,6 +28,8 @@ import json
 BASEDIR = os.path.join(os.path.expanduser('~'), '.cryptop')
 WALLETFILE = os.path.join(BASEDIR, 'wallet.json')
 CONFFILE = os.path.join(BASEDIR, 'config.ini')
+LOGFILE = os.path.join(BASEDIR, 'trace.log')
+LOGTIME = 0
 CONFIG = configparser.ConfigParser()
 COIN_FORMAT = re.compile('[A-Z]{2,5},\d{0,}\.?\d{0,}')
 
@@ -41,7 +43,6 @@ ORDER = True
 
 ethplorer_conn = http.client.HTTPSConnection("api.ethplorer.io")
 
-VIEW = 'WALLET'
 FIAT = 'EUR'
 CURRENCYLIST = [FIAT, 'ETH', 'BTC']
 SYMBOL = '€'
@@ -539,6 +540,12 @@ def write_scr(stdscr, wallet, y, x):
       '[A] Add coin [R] Remove coin [F] Switch FIAT/ETH [S] Sort [C] Cycle sort [Q] Exit', x,
       curses.color_pair(2))
 
+  global LOGTIME, LOGFILE
+  if time.time() - LOGTIME > 60:
+    LOGTIME = time.time()
+    log = { key or str(int(time.time())) : dict(zip(coin[key],held[key])) for key in sorted(coin.keys())}
+    with open(LOGFILE, 'a') as logfile:
+      print(json.dumps(log),file=logfile)
 
 def read_wallet():
   ''' Reads the wallet data from its json file '''
@@ -594,7 +601,6 @@ def mainc(stdscr):
   stdscr.bkgd(' ', curses.color_pair(2))
   stdscr.clear()
   while inp not in {KEY_ZERO, KEY_ESCAPE, KEY_Q, KEY_q}:
-    global VIEW
     while True:
       try:
         write_scr(stdscr, wallet, y, x)
