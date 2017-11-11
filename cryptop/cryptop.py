@@ -89,7 +89,7 @@ def if_coin(coin, url='https://www.cryptocompare.com/api/data/coinlist/'):
   return coin in requests.get(url).json()['Data']
 
 coinstats = {}
-coinmap = {'KNC' : 'kyber-network'}
+coinmap = {'KNC' : 'kyber-network', 'BTG' : 'bitcoin-gold'}
 def update_coins():
   cmc = http.client.HTTPSConnection("api.coinmarketcap.com")
   cmc.request("GET", '/v1/ticker/?convert=EUR&limit=9999', {}, {})
