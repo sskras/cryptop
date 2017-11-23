@@ -50,6 +50,7 @@ SYMBOLLIST = ['€','Ξ','Ƀ']
 CURRENCYCOUNTER = 0
 CURRENCY = FIAT
 NROFDECIMALS = 2
+FIELD = 0
 BALANCE_TIME = 0
 
 KEY_ESCAPE = 27
@@ -456,7 +457,7 @@ def str_formatter(coin, val, held, ticks):
 def write_coins(name, coins, held, stdscr, x, y, off=0):
   width, _ = terminal_size()
   width -= 5
-  ticks = [8,12,12,12,12,12,12,12]
+  ticks = [FIELD + 8,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12]
   diffs = [0,0,2,2,2,3,3,3]
   scale = max(width / float(sum(ticks)), 1.0)
   hticks = [int(t * scale) for t in ticks]
@@ -681,6 +682,9 @@ def main():
   elif FIAT == 'USD':
     SYMBOL = '$'
     SYMBOLLIST = ['$','Ξ','Ƀ']
+
+  global FIELD
+  FIELD = int(CONFIG['theme'].get('field_length'))
 
   requests_cache.install_cache(cache_name='api_cache', backend='memory',
     expire_after=int(CONFIG['api'].get('cache', 60)))
