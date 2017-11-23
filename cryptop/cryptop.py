@@ -115,13 +115,14 @@ def update_coins():
       r7d = 1. / requests.get('https://api.fixer.io/' + d7d.strftime('%Y-%m-%d') + '?base=USD').json()['rates'][fiat]
       coinstats[fiat]['percent_change_7d'] = 100. - 100. * r7d / coinstats[fiat]['price_usd']
     except:
-      rates = requests.get('https://www.quandl.com/api/v3/datasets/ECB/EURUSD').json()['dataset']['data']
+      try:
+        rates = requests.get('https://www.quandl.com/api/v3/datasets/ECB/EURUSD').json()['dataset']['data']
+      except:
+        continue
       coinstats[fiat]['price_usd'] = rates[0][1]
       coinstats[fiat]['percent_change_24h'] = 100. - 100. * rates[1][1] / rates[0][1]
       coinstats[fiat]['percent_change_1h'] = coinstats[fiat]['percent_change_24h'] / 24.
       coinstats[fiat]['percent_change_7d'] = 100. - 100. * rates[7][1] / rates[0][1]
-      #assert False, "FIXME: " + str(requests.get('https://www.quandl.com/api/v3/datasets/ECB/EURUSD').json()['dataset']['data'])
-      continue
 
 def ticker():
   import time
