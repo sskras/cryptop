@@ -93,11 +93,11 @@ coinstats = {}
 coinmap = {'KNC' : 'kyber-network', 'BTG' : 'bitcoin-gold'}
 def update_coins():
   cmc = http.client.HTTPSConnection("api.coinmarketcap.com")
-  cmc.request("GET", '/v1/ticker/?convert=EUR&limit=1000', {}, {})
+  cmc.request("GET", '/v1/ticker/?convert=EUR&limit=2000', {}, {})
   data = cmc.getresponse()
   data = json.loads(data.read().decode())
   for item in data[::-1]:
-    if item['symbol'] in coinmap and coinmap[item['symbol']] != item['id']:
+    if item['symbol'] in coinmap.keys() and coinmap[item['symbol']] != item['id']:
       continue
     coinstats[item['symbol']] = item
   from datetime import date, timedelta
