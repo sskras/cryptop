@@ -139,7 +139,7 @@ def update_bittrex(key, secret):
     try:
       url = "https://bittrex.com/api/v1.1/account/getbalances?apikey=%s&nonce=%d&" % (key, int(time.time() * 1000))
       ret = requests.get(url,
-          headers={"apisign": hmac.new(secret.encode(), url.encode(), hashlib.sha512).hexdigest()},
+          headers={"apisign": hmac.new(secret.encode(), url.encode(), hashlib.sha512).hexdigest() },
           timeout=5).json()
       if 'result' in ret and ret['result'] is not None:
         bittrex[key] = ret
@@ -147,6 +147,25 @@ def update_bittrex(key, secret):
       if not key in bittrex.keys():
         bittrex[key] = { 'result' : [] }
   return bittrex[key]
+
+binance = {}
+binance_time = 0
+def update_binance(key, secret):
+  global binance_time
+  if time.time() - binance_time > 15:
+    binance_time = time.time()
+    try:
+      url = "https://api.binance.com/api/v3/account?timestamp=%d" % int(time.time() * 1000)
+      url += '&signature=' + hmac.new(secret.encode('utf-8'), url.split('?')[1].encode('utf-8'), hashlib.sha256).hexdigest()
+      ret = requests.get(url,
+          headers={'X-MBX-APIKEY': key, 'Accept': 'application/json', 'User-Agent': 'binance/python'},
+          timeout=5).json()
+      if 'balances' in ret and ret['balances'] is not None:
+        binance[key] = ret
+    except:
+      if not key in binance.keys():
+        binance[key] = { 'balances' : [] }
+  return binance[key]
 
 erc20_block = {}
 erc20_contracts = set([])
@@ -521,6 +540,10 @@ def write_scr(stdscr, wallet, y, x):
       balance = update_bittrex(*heldl[i].split(':'))
       coin['bittrex'] = [ c['Currency'].replace('BCC','BCH') for c in balance['result'] if c['Balance'] >= 0.01 ]
       held['bittrex'] = [ c['Balance'] for c in balance['result'] if c['Balance'] >= 0.01 ]
+    elif coinl[i].lower() == 'binance':
+      balance = update_binance(*heldl[i].split(':'))
+      coin['binance'] = [ c['asset'] for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 ]
+      held['binance'] = [ float(c['free']) + float(c['locked']) for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 ]
     elif heldl[i].lower().startswith('0x'):
       tokens = get_ethereum(heldl[i])
       coin[coinl[i].lower()] = [ tok for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() and tokens[heldl[i]][tok] >= 0.01 ]
