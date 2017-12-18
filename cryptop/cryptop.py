@@ -43,12 +43,17 @@ ORDER = True
 
 ethplorer_conn = http.client.HTTPSConnection("api.ethplorer.io")
 
-FIAT = 'EUR'
-CURRENCYLIST = [FIAT, 'ETH', 'BTC', 'PAY']
-SYMBOL = '€'
-SYMBOLLIST = ['€','Ξ','Ƀ']
+isfiat = lambda c: c in ['EUR', 'USD']
+CURRENCYLIST = [ 'USD', 'ETH', 'BTC' ]
+CURRENCY = 'USD'
+SYMBOL = '$'
+SYMBOLMAP = {
+'USD' : '$',
+'EUR' : '€',
+'ETH' : 'Ξ',
+'BTC' : 'Ƀ'
+}
 CURRENCYCOUNTER = 0
-CURRENCY = FIAT
 NROFDECIMALS = 2
 FIELD = 0
 BALANCE_TIME = 0
@@ -101,7 +106,8 @@ def update_coins():
       continue
     coinstats[item['symbol']] = item
   from datetime import date, timedelta
-  for fiat in ['EUR']:
+  global CURRENCYLIST
+  for fiat in [ f for f in CURRENCYLIST if isfiat(f) and f != 'USD']:
     if not fiat in coinstats.keys():
       coinstats[fiat] = {}
     coinstats[fiat]['price_usd'] = float(coinstats['BTC']['price_usd']) / float(coinstats['BTC']['price_eur'])
@@ -571,7 +577,7 @@ def write_scr(stdscr, wallet, y, x):
     stdscr.addnstr(y - 2, 0, 'Total Holdings: {:10.2f} {}  '
       .format(total, CURRENCY), x, curses.color_pair(11))
     stdscr.addnstr(y - 1, 0,
-      '[A] Add coin [R] Remove coin [F] Switch FIAT/ETH [S] Sort [C] Cycle sort [Q] Exit', x,
+      '[A] Add coin [R] Remove coin [F] Switch currency [I] Ignore token [S] Sort [C] Cycle sort [Q] Exit', x,
       curses.color_pair(2))
 
   global LOGTIME, LOGFILE
@@ -672,15 +678,11 @@ def mainc(stdscr):
 
     if inp in {KEY_f, KEY_F, KEY_SPACE}:
       if y > 2:
-        global CURRENCY, NROFDECIMALS, FIAT, CURRENCYCOUNTER, CURRENCYLIST, SYMBOL, SYMBOLLIST
+        global CURRENCY, NROFDECIMALS, CURRENCYCOUNTER, CURRENCYLIST, SYMBOL, SYMBOLLIST
         CURRENCYCOUNTER = (CURRENCYCOUNTER + 1) % len(CURRENCYLIST)
         CURRENCY = CURRENCYLIST[CURRENCYCOUNTER]
-        SYMBOL = SYMBOLLIST[CURRENCYCOUNTER]
-
-        if CURRENCY is FIAT:
-          NROFDECIMALS = 2
-        else:
-          NROFDECIMALS = 6
+        SYMBOL = SYMBOLMAP[CURRENCY]
+        NROFDECIMALS = 2 if isfiat(CURRENCY) else 6
 
 
 def main():
@@ -691,21 +693,20 @@ def main():
   global CONFIG
   CONFIG = read_configuration(CONFFILE)
 
+  global CURRENCYLIST, CURRENCY, SYMBOL, SYMBOLMAP
+  CURRENCYLIST = CONFIG['api'].get('currency', 'USD,ETH,BTC,EUR').split(',')
+  assert CURRENCYLIST, "list of currency must not be empty"
+  CURRENCY = CURRENCYLIST[0]
+  for cur in CURRENCYLIST:
+    if not cur in SYMBOLMAP:
+      if not cur[0] in SYMBOLMAP:
+        SYMBOLMAP[cur] = cur[0]
+      else:
+        SYMBOLMAP[cur] = cur
+
   import _thread
   update_coins()
   _thread.start_new_thread(ticker, ())
-
-  global FIAT, CURRENCYLIST, CURRENCY, SYMBOL, SYMBOLLIST
-  FIAT = CONFIG['api'].get('currency', 'EUR')
-  CURRENCY = FIAT
-  CURRENCYLIST = [FIAT, 'ETH', 'BTC' ] + (['USD'] if FIAT != 'USD' else []) + ['REQ','PAY']
-
-  if FIAT == 'EUR':
-    SYMBOL = '€'
-    SYMBOLLIST = ['€','Ξ','Ƀ','$'] + ['R','P']
-  elif FIAT == 'USD':
-    SYMBOL = '$'
-    SYMBOLLIST = ['$','Ξ','Ƀ'] + ['R','P']
 
   global FIELD
   FIELD = int(CONFIG['theme'].get('field_length'))
@@ -715,7 +716,7 @@ def main():
 
   global WALLETFILE
   if len(sys.argv) > 1:
-    WALLETFILE = WALLETFILE = os.path.join(BASEDIR, '%s.json' % sys.argv[1])
+    WALLETFILE = os.path.join(BASEDIR, '%s.json' % sys.argv[1])
 
   curses.wrapper(mainc)
 
