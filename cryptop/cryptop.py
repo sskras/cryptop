@@ -44,7 +44,7 @@ ORDER = True
 ethplorer_conn = http.client.HTTPSConnection("api.ethplorer.io")
 
 FIAT = 'EUR'
-CURRENCYLIST = [FIAT, 'ETH', 'BTC']
+CURRENCYLIST = [FIAT, 'ETH', 'BTC', 'PAY']
 SYMBOL = '€'
 SYMBOLLIST = ['€','Ξ','Ƀ']
 CURRENCYCOUNTER = 0
@@ -698,14 +698,14 @@ def main():
   global FIAT, CURRENCYLIST, CURRENCY, SYMBOL, SYMBOLLIST
   FIAT = CONFIG['api'].get('currency', 'EUR')
   CURRENCY = FIAT
-  CURRENCYLIST = [FIAT, 'ETH', 'BTC'] + (['USD'] if FIAT != 'USD' else [])
+  CURRENCYLIST = [FIAT, 'ETH', 'BTC' ] + (['USD'] if FIAT != 'USD' else []) + ['REQ','PAY']
 
   if FIAT == 'EUR':
     SYMBOL = '€'
-    SYMBOLLIST = ['€','Ξ','Ƀ','$']
+    SYMBOLLIST = ['€','Ξ','Ƀ','$'] + ['R','P']
   elif FIAT == 'USD':
     SYMBOL = '$'
-    SYMBOLLIST = ['$','Ξ','Ƀ']
+    SYMBOLLIST = ['$','Ξ','Ƀ'] + ['R','P']
 
   global FIELD
   FIELD = int(CONFIG['theme'].get('field_length'))
