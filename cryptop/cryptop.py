@@ -577,7 +577,7 @@ def write_scr(stdscr, wallet, y, x):
     stdscr.addnstr(y - 2, 0, 'Total Holdings: {:10.2f} {}  '
       .format(total, CURRENCY), x, curses.color_pair(11))
     stdscr.addnstr(y - 1, 0,
-      '[A] Add coin [R] Remove coin [F] Switch currency [I] Ignore token [S] Sort [C] Cycle sort [Q] Exit', x,
+      '[A] Add coin [R] Remove coin [F] Switch currency [S] Sort [C] Cycle sort [Q] Exit', x,
       curses.color_pair(2))
 
   global LOGTIME, LOGFILE
