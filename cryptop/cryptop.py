@@ -540,24 +540,29 @@ def write_scr(stdscr, wallet, y, x):
 
   coin = { 'custom' : [], '' : [] }
   held = { 'custom' : [], '' : [] }
+  labels = []
 
   for i in range(len(coinl)):
     if coinl[i].lower() == 'bittrex':
       balance = update_bittrex(*heldl[i].split(':'))
       coin['bittrex'] = [ c['Currency'].replace('BCC','BCH') for c in balance['result'] if c['Balance'] >= 0.01 ]
       held['bittrex'] = [ c['Balance'] for c in balance['result'] if c['Balance'] >= 0.01 ]
+      labels.append('bittrex')
     elif coinl[i].lower() == 'binance':
       balance = update_binance(*heldl[i].split(':'))
       coin['binance'] = [ c['asset'].replace('BCC','BCH') for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 ]
       held['binance'] = [ float(c['free']) + float(c['locked']) for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 ]
+      labels.append('binance')
     elif heldl[i].lower().startswith('0x'):
       tokens = get_ethereum(heldl[i])
       coin[coinl[i].lower()] = [ tok for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() and tokens[heldl[i]][tok] >= 0.01 ]
       held[coinl[i].lower()] = [ tokens[heldl[i]][tok] for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() and tokens[heldl[i]][tok] >= 0.01 ]
+      labels.append(coinl[i].lower())
     elif float(heldl[i]) >= 0.01:
       coin['custom'].append(coinl[i])
       held['custom'].append(float(heldl[i]))
-    else:
+  for i in range(len(coinl)):
+    if not coinl[i].lower() in labels and not any([ coinl[i] in coin[k] for k in coin.keys() ]):
       coin[''].append(coinl[i])
       held[''].append(0)
 
@@ -620,6 +625,8 @@ def add_coin(coin_amount, wallet):
   if not coin_amount.strip():
     return wallet
   if not ',' in coin_amount:
+    if coin_amount.upper() in wallet.keys():
+      return wallet
     coin_amount = "%s,%d" % (coin_amount, 0)
   coin,amount = coin_amount.split(',')
   wallet[coin.upper()] = amount
