@@ -542,7 +542,7 @@ def write_scr(stdscr, wallet, y, x):
       held['bittrex'] = [ c['Balance'] for c in balance['result'] if c['Balance'] >= 0.01 ]
     elif coinl[i].lower() == 'binance':
       balance = update_binance(*heldl[i].split(':'))
-      coin['binance'] = [ c['asset'] for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 ]
+      coin['binance'] = [ c['asset'].replace('BCC','BCH') for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 ]
       held['binance'] = [ float(c['free']) + float(c['locked']) for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 ]
     elif heldl[i].lower().startswith('0x'):
       tokens = get_ethereum(heldl[i])
