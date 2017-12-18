@@ -44,6 +44,7 @@ ORDER = True
 ethplorer_conn = http.client.HTTPSConnection("api.ethplorer.io")
 
 isfiat = lambda c: c in ['EUR', 'USD']
+BLACKLIST = []
 CURRENCYLIST = [ 'USD', 'ETH', 'BTC' ]
 CURRENCY = 'USD'
 SYMBOL = '$'
@@ -278,9 +279,8 @@ def get_erc20_balance(token, address):
 tokens = {}
 def get_ethereum(address):
   import json
-  blacklist= ['IND','WRC','RST-P', 'ATM', 'JOT']
 
-  global tokens, ethplorer_conn, etherscan_conn
+  global BLACKLIST, tokens, ethplorer_conn, etherscan_conn
   if not address in tokens:
     tokens[address] = {'.' : 0}
 
@@ -295,7 +295,7 @@ def get_ethereum(address):
       data={}
     if apidown and 'tokens' in data.keys():
       for tok in data['tokens']:
-        if tok['tokenInfo']['symbol'] not in blacklist:
+        if tok['tokenInfo']['symbol'] not in BLACKLIST:
           tokens[address][tok['tokenInfo']['symbol']], _ = get_erc20_balance(tok['tokenInfo']['symbol'], address)
       try:
         r = requests.get("https://api.etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address)
@@ -306,7 +306,7 @@ def get_ethereum(address):
         tokens[address]['ETH'] = float(balance['result']) / 1e18
     elif 'tokens' in data.keys():
       for tok in data['tokens']:
-        if tok['tokenInfo']['symbol'] not in blacklist:
+        if tok['tokenInfo']['symbol'] not in BLACKLIST:
           tokens[address][tok['tokenInfo']['symbol']] = tok['balance'] / 10**int(tok['tokenInfo']['decimals'])
   return tokens
 
@@ -693,7 +693,8 @@ def main():
   global CONFIG
   CONFIG = read_configuration(CONFFILE)
 
-  global CURRENCYLIST, CURRENCY, SYMBOL, SYMBOLMAP
+  global BLACKLIST, CURRENCYLIST, CURRENCY, SYMBOL, SYMBOLMAP
+  BLACKLIST = CONFIG['api'].get('blacklist', '').split(',')
   CURRENCYLIST = CONFIG['api'].get('currency', 'USD,ETH,BTC,EUR').split(',')
   assert CURRENCYLIST, "list of currency must not be empty"
   CURRENCY = CURRENCYLIST[0]
