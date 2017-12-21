@@ -98,9 +98,9 @@ coinstats = {}
 coinmap = {'KNC' : 'kyber-network', 'BTG' : 'bitcoin-gold'}
 def update_coins():
   cmc = http.client.HTTPSConnection("api.coinmarketcap.com")
-  cmc.request("GET", '/v1/ticker/?convert=EUR&limit=2000', {}, {})
-  data = cmc.getresponse()
   try:
+    cmc.request("GET", '/v1/ticker/?convert=EUR&limit=2000', {}, {})
+    data = cmc.getresponse()
     data = json.loads(data.read().decode())
   except:
     return
