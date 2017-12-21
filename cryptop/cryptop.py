@@ -153,7 +153,7 @@ def update_bittrex(key, secret):
       if 'result' in ret and ret['result'] is not None:
         bittrex_tokens[key] = ret
     except:
-      if not key in bittrex.keys():
+      if not key in bittrex_tokens.keys():
         bittrex_tokens[key] = { 'result' : [] }
   return bittrex_tokens[key]
 
