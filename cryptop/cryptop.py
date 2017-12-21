@@ -23,6 +23,7 @@ import requests
 import requests_cache
 import http.client
 import json
+import _thread
 
 # GLOBALS!
 BASEDIR = os.path.join(os.path.expanduser('~'), '.cryptop')
@@ -86,10 +87,8 @@ def read_configuration(confpath):
   if not os.path.isfile(confpath):
     defaultconf = pkg_resources.resource_filename(__name__, 'config.ini')
     shutil.copyfile(defaultconf, CONFFILE)
-
   CONFIG.read(confpath)
   return CONFIG
-
 
 def if_coin(coin, url='https://www.cryptocompare.com/api/data/coinlist/'):
   '''Check if coin exists'''
@@ -140,7 +139,7 @@ def ticker():
     time.sleep(15)
     update_coins()
 
-bittrex = {}
+bittrex_tokens = {}
 bittrex_time = 0
 def update_bittrex(key, secret):
   global bittrex_time
@@ -152,13 +151,19 @@ def update_bittrex(key, secret):
           headers={"apisign": hmac.new(secret.encode(), url.encode(), hashlib.sha512).hexdigest() },
           timeout=5).json()
       if 'result' in ret and ret['result'] is not None:
-        bittrex[key] = ret
+        bittrex_tokens[key] = ret
     except:
       if not key in bittrex.keys():
-        bittrex[key] = { 'result' : [] }
-  return bittrex[key]
+        bittrex_tokens[key] = { 'result' : [] }
+  return bittrex_tokens[key]
 
-binance = {}
+def bittrex(key, secret):
+  if not key in bittrex_tokens.keys():
+    return update_bittrex(key, secret)
+  _thread.start_new_thread(update_bittrex, (key,secret))
+  return bittrex_tokens[key]
+
+binance_tokens = {}
 binance_time = 0
 def update_binance(key, secret):
   global binance_time
@@ -171,11 +176,17 @@ def update_binance(key, secret):
           headers={'X-MBX-APIKEY': key, 'Accept': 'application/json', 'User-Agent': 'binance/python'},
           timeout=5).json()
       if 'balances' in ret and ret['balances'] is not None:
-        binance[key] = ret
+        binance_tokens[key] = ret
     except:
-      if not key in binance.keys():
-        binance[key] = { 'balances' : [] }
-  return binance[key]
+      if not key in binance_tokens.keys():
+        binance_tokens[key] = { 'balances' : [] }
+  return binance_tokens[key]
+
+def binance(key, secret):
+  if not key in binance_tokens.keys():
+    return update_binance(key, secret)
+  _thread.start_new_thread(update_binance, (key,secret))
+  return binance_tokens[key]
 
 erc20_block = {}
 erc20_contracts = set([])
@@ -311,6 +322,12 @@ def get_ethereum(address):
       for tok in data['tokens']:
         if tok['tokenInfo']['symbol'] not in BLACKLIST:
           tokens[address][tok['tokenInfo']['symbol']] = tok['balance'] / 10**int(tok['tokenInfo']['decimals'])
+  return tokens
+
+def ethereum(address):
+  if not address in tokens.keys():
+    return get_ethereum(address)
+  _thread.start_new_thread(get_ethereum, (address,))
   return tokens
 
 CONTRACTS = {}
@@ -547,17 +564,17 @@ def write_scr(stdscr, wallet, y, x):
 
   for i in range(len(coinl)):
     if coinl[i].lower() == 'bittrex':
-      balance = update_bittrex(*heldl[i].split(':'))
+      balance = bittrex(*heldl[i].split(':'))
       coin['bittrex'] = [ c['Currency'].replace('BCC','BCH') for c in balance['result'] if c['Balance'] >= 0.01 ]
       held['bittrex'] = [ c['Balance'] for c in balance['result'] if c['Balance'] >= 0.01 ]
       labels.append('bittrex')
     elif coinl[i].lower() == 'binance':
-      balance = update_binance(*heldl[i].split(':'))
+      balance = binance(*heldl[i].split(':'))
       coin['binance'] = [ c['asset'].replace('BCC','BCH') for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 ]
       held['binance'] = [ float(c['free']) + float(c['locked']) for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 ]
       labels.append('binance')
     elif heldl[i].lower().startswith('0x'):
-      tokens = get_ethereum(heldl[i])
+      tokens = ethereum(heldl[i])
       coin[coinl[i].lower()] = [ tok for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() and tokens[heldl[i]][tok] >= 0.01 ]
       held[coinl[i].lower()] = [ tokens[heldl[i]][tok] for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() and tokens[heldl[i]][tok] >= 0.01 ]
       labels.append(coinl[i].lower())
@@ -694,7 +711,6 @@ def mainc(stdscr):
         SYMBOL = SYMBOLMAP[CURRENCY]
         NROFDECIMALS = 2 if isfiat(CURRENCY) else 6
 
-
 def main():
   if os.path.isfile(BASEDIR):
     sys.exit('Please remove your old configuration file at {}'.format(BASEDIR))
@@ -715,7 +731,6 @@ def main():
       else:
         SYMBOLMAP[cur] = cur
 
-  import _thread
   update_coins()
   _thread.start_new_thread(ticker, ())
 
@@ -730,7 +745,6 @@ def main():
     WALLETFILE = os.path.join(BASEDIR, '%s.json' % sys.argv[1])
 
   curses.wrapper(mainc)
-
 
 if __name__ == "__main__":
   main()
