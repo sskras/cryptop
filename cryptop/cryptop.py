@@ -792,7 +792,7 @@ def main():
   _thread.start_new_thread(ticker, ())
 
   global FIELD
-  FIELD = int(CONFIG['theme'].get('field_length'))
+  FIELD = float(CONFIG['theme'].get('field_length'))
 
   requests_cache.install_cache(cache_name='api_cache', backend='memory',
     expire_after=int(CONFIG['api'].get('cache', 60)))
