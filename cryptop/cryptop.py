@@ -166,10 +166,10 @@ def update_coins():
           price = stats[tok]['price_usd'] / stats['ETH']['price_usd']
           prev = stats[tok]['price_usd']
           stats[tok]['price_usd'] = (0.75 * float(pair['Last']) + 0.25 * price) * stats['ETH']['price_usd']
-          ratio = 100. * (stats[tok]['price_usd'] / prev - 1.)
-          stats[tok]['percent_change_1h'] += stats[tok]['percent_change_1h'] * ratio
-          stats[tok]['percent_change_24h'] += stats[tok]['percent_change_24h'] * ratio
-          stats[tok]['percent_change_7d'] += stats[tok]['percent_change_7d'] * ratio
+          ratio = 1. + (stats[tok]['price_usd'] / prev - 1.)
+          stats[tok]['percent_change_1h'] *= ratio
+          stats[tok]['percent_change_24h'] *= ratio
+          stats[tok]['percent_change_7d'] *= ratio
 
   try:
     ret = requests.get('https://www.binance.com/api/v1/ticker/allPrices').json()
