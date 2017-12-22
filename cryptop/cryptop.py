@@ -426,11 +426,8 @@ def get_price(coin, curr=None):
     sf = lambda x: float(x) if x is not None else 0
     price, volume, c1h, c24h, c7d = sf(tok['price_usd']), sf(tok['24h_volume_usd']), sf(tok['percent_change_1h'])/100., sf(tok['percent_change_24h'])/100., sf(tok['percent_change_7d'])/100.
     if curr != 'USD':
-      if curr == 'EUR':
-        price, volume = sf(tok['price_eur']), sf(tok['24h_volume_eur'])
-      else:
-        price /= sf(coinstats[curr]['price_usd'])
-        volume /= sf(coinstats[curr]['price_usd'])
+      price /= sf(coinstats[curr]['price_usd'])
+      volume /= sf(coinstats[curr]['price_usd'])
       s1h = sf(coinstats[curr]['percent_change_1h'])/100.
       s24h = sf(coinstats[curr]['percent_change_24h'])/100.
       s7d = sf(coinstats[curr]['percent_change_7d'])/100.
