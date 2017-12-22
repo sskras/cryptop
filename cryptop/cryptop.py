@@ -162,14 +162,14 @@ def update_coins():
     for pair in ret['result']:
       if pair['MarketName'].split('-')[0] == 'ETH':
         tok = pair['MarketName'].split('-')[1].replace('BCC','BCH')
-        if tok in stats.keys():
+        if tok in stats.keys() and not isfiat(tok):
           price = stats[tok]['price_usd'] / stats['ETH']['price_usd']
           prev = stats[tok]['price_usd']
           stats[tok]['price_usd'] = (0.75 * float(pair['Last']) + 0.25 * price) * stats['ETH']['price_usd']
           ratio = 100. * (stats[tok]['price_usd'] / prev - 1.)
-          stats[fiat]['percent_change_1h'] += stats[fiat]['percent_change_1h'] * ratio
-          stats[fiat]['percent_change_24h'] += stats[fiat]['percent_change_24h'] * ratio
-          stats[fiat]['percent_change_7d'] += stats[fiat]['percent_change_7d'] * ratio
+          stats[tok]['percent_change_1h'] += stats[tok]['percent_change_1h'] * ratio
+          stats[tok]['percent_change_24h'] += stats[tok]['percent_change_24h'] * ratio
+          stats[tok]['percent_change_7d'] += stats[tok]['percent_change_7d'] * ratio
 
   try:
     ret = requests.get('https://www.binance.com/api/v1/ticker/allPrices').json()
@@ -179,14 +179,14 @@ def update_coins():
     for pair in ret:
       if pair['symbol'][-3:] == 'ETH':
         tok = pair['symbol'][:-3].replace('BCC','BCH')
-        if tok in stats.keys():
+        if tok in stats.keys() and not isfiat(tok):
           price = stats[tok]['price_usd'] / stats['ETH']['price_usd']
           prev = stats[tok]['price_usd']
           stats[tok]['price_usd'] = (0.75 * float(pair['price']) + 0.25 * price) * stats['ETH']['price_usd']
-          ratio = 100. * (stats[tok]['price_usd'] / prev - 1.)
-          stats[fiat]['percent_change_1h'] += stats[fiat]['percent_change_1h'] * ratio
-          stats[fiat]['percent_change_24h'] += stats[fiat]['percent_change_24h'] * ratio
-          stats[fiat]['percent_change_7d'] += stats[fiat]['percent_change_7d'] * ratio
+          ratio = (stats[tok]['price_usd'] / prev - 1.)
+          stats[tok]['percent_change_1h'] += stats[tok]['percent_change_1h'] * ratio
+          stats[tok]['percent_change_24h'] += stats[tok]['percent_change_24h'] * ratio
+          stats[tok]['percent_change_7d'] += stats[tok]['percent_change_7d'] * ratio
 
   global coinstats
   coinstats = stats
