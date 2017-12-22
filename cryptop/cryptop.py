@@ -44,7 +44,7 @@ ORDER = True
 
 ethplorer_conn = http.client.HTTPSConnection("api.ethplorer.io")
 
-isfiat = lambda c: c in ['EUR', 'USD']
+isfiat = lambda c: c.upper() in ['EUR', 'USD']
 BLACKLIST = []
 CURRENCYLIST = [ 'USD', 'ETH', 'BTC' ]
 CURRENCY = 'USD'
@@ -97,6 +97,21 @@ def if_coin(coin, url='https://www.cryptocompare.com/api/data/coinlist/'):
 coinstats = {}
 coinmap = {'KNC' : 'kyber-network', 'BTG' : 'bitcoin-gold'}
 def update_coins():
+  global CURRENCYLIST
+  cmclist = set([])
+  for coin in [ c for c in CURRENCYLIST if not isfiat(c) ]:
+    try:
+      ret = requests.get('https://min-api.cryptocompare.com/data/histohour?fsym=%s&tsym=USD&toTs=%d&limit=175' % (coin.upper(),int(time.time()))).json()
+    except:
+      cmclist.add(coin.upper())
+      continue
+    if not coin in coinstats.keys():
+      coinstats[coin] = {}
+    coinstats[coin]['price_usd'] = ret['Data'][-1]['close']
+    coinstats[coin]['percent_change_1h'] = 100. - 100. * (ret['Data'][-2]['close'] / ret['Data'][-1]['close'])
+    coinstats[coin]['percent_change_24h'] = 100. - 100. * (ret['Data'][-25]['close'] / ret['Data'][-1]['close'])
+    coinstats[coin]['percent_change_7d'] = 100. - 100. * (ret['Data'][-169]['close'] / ret['Data'][-1]['close'])
+
   cmc = http.client.HTTPSConnection("api.coinmarketcap.com")
   try:
     cmc.request("GET", '/v1/ticker/?convert=EUR&limit=2000', {}, {})
@@ -107,14 +122,16 @@ def update_coins():
   for item in data[::-1]:
     if item['symbol'] in coinmap.keys() and coinmap[item['symbol']] != item['id']:
       continue
-    coinstats[item['symbol']] = item
+    if item['symbol'] in CURRENCYLIST and not isfiat(item['symbol']) and not item['symbol'] in cmclist:
+      coinstats[item['symbol']]['24h_volume_usd'] = item['24h_volume_usd']
+    else:
+      coinstats[item['symbol']] = item
   from datetime import date, timedelta
-  global CURRENCYLIST
   for fiat in [ f for f in CURRENCYLIST if isfiat(f) and f != 'USD']:
     if not fiat in coinstats.keys():
       coinstats[fiat] = {}
-    coinstats[fiat]['price_usd'] = float(coinstats['BTC']['price_usd']) / float(coinstats['BTC']['price_eur'])
     try:
+      coinstats[fiat]['price_usd'] = requests.get('https://api.fixer.io/latest?base=USD').json()['rates'][fiat]
       d24h = date.today() - timedelta(1)
       r24h = 1. / requests.get('https://api.fixer.io/' + d24h.strftime('%Y-%m-%d') + '?base=USD').json()['rates'][fiat]
       coinstats[fiat]['percent_change_24h'] = 100. - 100. * r24h / coinstats[fiat]['price_usd']
@@ -135,8 +152,10 @@ def update_coins():
 
 def ticker():
   import time
+  ts = 0
   while True:
-    time.sleep(15)
+    time.sleep(max(min(int(time.time()) - ts, 15), 2))
+    ts = int(time.time())
     update_coins()
 
 bittrex_tokens = {}
