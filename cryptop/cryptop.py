@@ -131,7 +131,7 @@ def update_coins():
     if not fiat in coinstats.keys():
       coinstats[fiat] = {}
     try:
-      coinstats[fiat]['price_usd'] = requests.get('https://api.fixer.io/latest?base=USD').json()['rates'][fiat]
+      coinstats[fiat]['price_usd'] = 1. / requests.get('https://api.fixer.io/latest?base=USD').json()['rates'][fiat]
       d24h = date.today() - timedelta(1)
       r24h = 1. / requests.get('https://api.fixer.io/' + d24h.strftime('%Y-%m-%d') + '?base=USD').json()['rates'][fiat]
       coinstats[fiat]['percent_change_24h'] = 100. - 100. * r24h / coinstats[fiat]['price_usd']
