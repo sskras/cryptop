@@ -24,6 +24,7 @@ import requests_cache
 import http.client
 import json
 import _thread
+from datetime import date, timedelta
 
 # GLOBALS!
 BASEDIR = os.path.join(os.path.expanduser('~'), '.cryptop')
@@ -98,6 +99,7 @@ coinstats = {}
 coinmap = {'KNC' : 'kyber-network', 'BTG' : 'bitcoin-gold'}
 def update_coins():
   global CURRENCYLIST
+  stats = {}
   cmclist = set([])
   for coin in [ c for c in CURRENCYLIST if not isfiat(c) ]:
     try:
@@ -105,12 +107,12 @@ def update_coins():
     except:
       cmclist.add(coin.upper())
       continue
-    if not coin in coinstats.keys():
-      coinstats[coin] = {}
-    coinstats[coin]['price_usd'] = ret['Data'][-1]['close']
-    coinstats[coin]['percent_change_1h'] = 100. - 100. * (ret['Data'][-2]['close'] / ret['Data'][-1]['close'])
-    coinstats[coin]['percent_change_24h'] = 100. - 100. * (ret['Data'][-25]['close'] / ret['Data'][-1]['close'])
-    coinstats[coin]['percent_change_7d'] = 100. - 100. * (ret['Data'][-169]['close'] / ret['Data'][-1]['close'])
+    if not coin in stats.keys():
+      stats[coin] = {}
+    stats[coin]['price_usd'] = ret['Data'][-1]['close']
+    stats[coin]['percent_change_1h'] = 100. - 100. * (ret['Data'][-2]['close'] / ret['Data'][-1]['close'])
+    stats[coin]['percent_change_24h'] = 100. - 100. * (ret['Data'][-25]['close'] / ret['Data'][-1]['close'])
+    stats[coin]['percent_change_7d'] = 100. - 100. * (ret['Data'][-169]['close'] / ret['Data'][-1]['close'])
 
   cmc = http.client.HTTPSConnection("api.coinmarketcap.com")
   try:
@@ -123,32 +125,71 @@ def update_coins():
     if item['symbol'] in coinmap.keys() and coinmap[item['symbol']] != item['id']:
       continue
     if item['symbol'] in CURRENCYLIST and not isfiat(item['symbol']) and not item['symbol'] in cmclist:
-      coinstats[item['symbol']]['24h_volume_usd'] = item['24h_volume_usd']
+      stats[item['symbol']]['24h_volume_usd'] = item['24h_volume_usd']
     else:
-      coinstats[item['symbol']] = item
-  from datetime import date, timedelta
+      stats[item['symbol']] = {}
+      for key in ['price_usd', '24h_volume_usd', 'percent_change_1h', 'percent_change_24h', 'percent_change_7d']:
+        stats[item['symbol']][key] = float(item[key] or 0)
+
   for fiat in [ f for f in CURRENCYLIST if isfiat(f) and f != 'USD']:
-    if not fiat in coinstats.keys():
-      coinstats[fiat] = {}
+    if not fiat in stats.keys():
+      stats[fiat] = {}
     try:
-      coinstats[fiat]['price_usd'] = 1. / requests.get('https://api.fixer.io/latest?base=USD').json()['rates'][fiat]
+      stats[fiat]['price_usd'] = 1. / requests.get('https://api.fixer.io/latest?base=USD').json()['rates'][fiat]
       d24h = date.today() - timedelta(1)
       r24h = 1. / requests.get('https://api.fixer.io/' + d24h.strftime('%Y-%m-%d') + '?base=USD').json()['rates'][fiat]
-      coinstats[fiat]['percent_change_24h'] = 100. - 100. * r24h / coinstats[fiat]['price_usd']
-      coinstats[fiat]['percent_change_1h'] = coinstats[fiat]['percent_change_24h'] / 24.
+      stats[fiat]['percent_change_24h'] = 100. - 100. * r24h / stats[fiat]['price_usd']
+      stats[fiat]['percent_change_1h'] = stats[fiat]['percent_change_24h'] / 24.
 
       d7d = date.today() - timedelta(7)
       r7d = 1. / requests.get('https://api.fixer.io/' + d7d.strftime('%Y-%m-%d') + '?base=USD').json()['rates'][fiat]
-      coinstats[fiat]['percent_change_7d'] = 100. - 100. * r7d / coinstats[fiat]['price_usd']
+      stats[fiat]['percent_change_7d'] = 100. - 100. * r7d / stats[fiat]['price_usd']
     except:
       try:
         rates = requests.get('https://www.quandl.com/api/v3/datasets/ECB/EURUSD').json()['dataset']['data']
       except:
         continue
-      coinstats[fiat]['price_usd'] = rates[0][1]
-      coinstats[fiat]['percent_change_24h'] = 100. - 100. * rates[1][1] / rates[0][1]
-      coinstats[fiat]['percent_change_1h'] = coinstats[fiat]['percent_change_24h'] / 24.
-      coinstats[fiat]['percent_change_7d'] = 100. - 100. * rates[7][1] / rates[0][1]
+      stats[fiat]['price_usd'] = rates[0][1]
+      stats[fiat]['percent_change_24h'] = 100. - 100. * rates[1][1] / rates[0][1]
+      stats[fiat]['percent_change_1h'] = stats[fiat]['percent_change_24h'] / 24.
+      stats[fiat]['percent_change_7d'] = 100. - 100. * rates[7][1] / rates[0][1]
+
+  try:
+    ret = requests.get('https://bittrex.com/api/v1.1/public/getmarketsummaries').json()
+  except:
+    pass
+  else:
+    for pair in ret['result']:
+      if pair['MarketName'].split('-')[0] == 'ETH':
+        tok = pair['MarketName'].split('-')[1].replace('BCC','BCH')
+        if tok in stats.keys():
+          price = stats[tok]['price_usd'] / stats['ETH']['price_usd']
+          prev = stats[tok]['price_usd']
+          stats[tok]['price_usd'] = (0.75 * float(pair['Last']) + 0.25 * price) * stats['ETH']['price_usd']
+          ratio = 100. * (stats[tok]['price_usd'] / prev - 1.)
+          stats[fiat]['percent_change_1h'] += stats[fiat]['percent_change_1h'] * ratio
+          stats[fiat]['percent_change_24h'] += stats[fiat]['percent_change_24h'] * ratio
+          stats[fiat]['percent_change_7d'] += stats[fiat]['percent_change_7d'] * ratio
+
+  try:
+    ret = requests.get('https://www.binance.com/api/v1/ticker/allPrices').json()
+  except:
+    pass
+  else:
+    for pair in ret:
+      if pair['symbol'][-3:] == 'ETH':
+        tok = pair['symbol'][:-3].replace('BCC','BCH')
+        if tok in stats.keys():
+          price = stats[tok]['price_usd'] / stats['ETH']['price_usd']
+          prev = stats[tok]['price_usd']
+          stats[tok]['price_usd'] = (0.75 * float(pair['price']) + 0.25 * price) * stats['ETH']['price_usd']
+          ratio = 100. * (stats[tok]['price_usd'] / prev - 1.)
+          stats[fiat]['percent_change_1h'] += stats[fiat]['percent_change_1h'] * ratio
+          stats[fiat]['percent_change_24h'] += stats[fiat]['percent_change_24h'] * ratio
+          stats[fiat]['percent_change_7d'] += stats[fiat]['percent_change_7d'] * ratio
+
+  global coinstats
+  coinstats = stats
 
 def ticker():
   import time
