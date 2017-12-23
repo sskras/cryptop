@@ -59,6 +59,7 @@ SYMBOLMAP = {
 CURRENCYCOUNTER = 0
 NROFDECIMALS = 2
 FIELD = 0
+FIELD_OFFSET = 0
 BALANCE_TIME = 0
 
 KEY_ESCAPE = 27
@@ -166,11 +167,10 @@ def update_coins():
           price = stats[tok]['price_usd'] / stats['ETH']['price_usd']
           prev = stats[tok]['price_usd']
           stats[tok]['price_usd'] = (0.75 * float(pair['Last']) + 0.25 * price) * stats['ETH']['price_usd']
-          ratio = 1. + (stats[tok]['price_usd'] / prev - 1.)
-          stats[tok]['percent_change_1h'] *= ratio
-          stats[tok]['percent_change_24h'] *= ratio
-          stats[tok]['percent_change_7d'] *= ratio
-
+          delta = stats[tok]['price_usd'] - prev
+          stats[tok]['percent_change_1h'] = 1. - delta / (1. - stats[tok]['percent_change_1h'])
+          stats[tok]['percent_change_24h'] = 1. - delta / (1. - stats[tok]['percent_change_24h'])
+          stats[tok]['percent_change_7d'] = 1. - delta / (1. - stats[tok]['percent_change_7d'])
   try:
     ret = requests.get('https://www.binance.com/api/v1/ticker/allPrices').json()
   except:
@@ -183,10 +183,10 @@ def update_coins():
           price = stats[tok]['price_usd'] / stats['ETH']['price_usd']
           prev = stats[tok]['price_usd']
           stats[tok]['price_usd'] = (0.75 * float(pair['price']) + 0.25 * price) * stats['ETH']['price_usd']
-          ratio = 1. + (stats[tok]['price_usd'] / prev - 1.)
-          stats[tok]['percent_change_1h'] *= ratio
-          stats[tok]['percent_change_24h'] *= ratio
-          stats[tok]['percent_change_7d'] *= ratio
+          delta = stats[tok]['price_usd'] - prev
+          stats[tok]['percent_change_1h'] = 1. - delta / (1. - stats[tok]['percent_change_1h'])
+          stats[tok]['percent_change_24h'] = 1. - delta / (1. - stats[tok]['percent_change_24h'])
+          stats[tok]['percent_change_7d'] = 1. - delta / (1. - stats[tok]['percent_change_7d'])
 
   global coinstats
   coinstats = stats
@@ -559,7 +559,7 @@ def str_formatter(coin, val, held, ticks):
 
 def write_coins(name, coins, held, stdscr, x, y, off=0):
   width, _ = terminal_size()
-  width -= 5
+  width -= FIELD_OFFSET
   ticks = [FIELD + 8,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12]
   diffs = [0,0,2,2,2,3,3,3]
   scale = max(width / float(sum(ticks)), 1.0)
@@ -791,8 +791,9 @@ def main():
   update_coins()
   _thread.start_new_thread(ticker, ())
 
-  global FIELD
-  FIELD = float(CONFIG['theme'].get('field_length'))
+  global FIELD, FIELD_OFFSET
+  FIELD = float(CONFIG['theme'].get('field_length', 0))
+  FIELD_OFFSET = float(CONFIG['theme'].get('field_offset', 5))
 
   requests_cache.install_cache(cache_name='api_cache', backend='memory',
     expire_after=int(CONFIG['api'].get('cache', 60)))
