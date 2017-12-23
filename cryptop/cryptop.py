@@ -167,10 +167,10 @@ def update_coins():
           price = stats[tok]['price_usd'] / stats['ETH']['price_usd']
           prev = stats[tok]['price_usd']
           stats[tok]['price_usd'] = (0.75 * float(pair['Last']) + 0.25 * price) * stats['ETH']['price_usd']
-          delta = stats[tok]['price_usd'] - prev
-          stats[tok]['percent_change_1h'] = 1. - delta / (1. - stats[tok]['percent_change_1h'])
-          stats[tok]['percent_change_24h'] = 1. - delta / (1. - stats[tok]['percent_change_24h'])
-          stats[tok]['percent_change_7d'] = 1. - delta / (1. - stats[tok]['percent_change_7d'])
+          delta = 100. * (stats[tok]['price_usd'] - prev)
+          stats[tok]['percent_change_1h'] = 100. - delta / (1. - stats[tok]['percent_change_1h'] / 100.)
+          stats[tok]['percent_change_24h'] = 100. - delta / (1. - stats[tok]['percent_change_24h'] / 100.)
+          stats[tok]['percent_change_7d'] = 100. - delta / (1. - stats[tok]['percent_change_7d'] / 100.)
   try:
     ret = requests.get('https://www.binance.com/api/v1/ticker/allPrices').json()
   except:
@@ -183,10 +183,10 @@ def update_coins():
           price = stats[tok]['price_usd'] / stats['ETH']['price_usd']
           prev = stats[tok]['price_usd']
           stats[tok]['price_usd'] = (0.75 * float(pair['price']) + 0.25 * price) * stats['ETH']['price_usd']
-          delta = stats[tok]['price_usd'] - prev
-          stats[tok]['percent_change_1h'] = 1. - delta / (1. - stats[tok]['percent_change_1h'])
-          stats[tok]['percent_change_24h'] = 1. - delta / (1. - stats[tok]['percent_change_24h'])
-          stats[tok]['percent_change_7d'] = 1. - delta / (1. - stats[tok]['percent_change_7d'])
+          delta = 100. * (stats[tok]['price_usd'] - prev)
+          stats[tok]['percent_change_1h'] = 100. - delta / (1. - stats[tok]['percent_change_1h'] / 100.)
+          stats[tok]['percent_change_24h'] = 100. - delta / (1. - stats[tok]['percent_change_24h'] / 100.)
+          stats[tok]['percent_change_7d'] = 100. - delta / (1. - stats[tok]['percent_change_7d'] / 100.)
 
   global coinstats
   coinstats = stats
