@@ -92,12 +92,9 @@ def read_configuration(confpath):
   CONFIG.read(confpath)
   return CONFIG
 
-def if_coin(coin, url='https://www.cryptocompare.com/api/data/coinlist/'):
-  '''Check if coin exists'''
-  return coin in requests.get(url).json()['Data']
-
 coinstats = {}
 coinmap = {'KNC' : 'kyber-network', 'BTG' : 'bitcoin-gold'}
+CCLIST = requests.get('https://www.cryptocompare.com/api/data/coinlist/').json()['Data']
 def update_coins():
   global CURRENCYLIST
   stats = {}
@@ -165,13 +162,13 @@ def update_coins():
         tok = pair['MarketName'].split('-')[1].replace('BCC','BCH')
         if tok in stats.keys() and not isfiat(tok):
           rates = [ stats[tok]['price_usd'],
-          stats[tok]['price_usd'] * (1. + stats[tok]['percent_change_1h'] / 100.),
-          stats[tok]['price_usd'] * (1. + stats[tok]['percent_change_24h'] / 100.),
-          stats[tok]['price_usd'] * (1. + stats[tok]['percent_change_7d'] / 100.) ]
+          stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_1h'] / 100.),
+          stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_24h'] / 100.),
+          stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_7d'] / 100.) ]
           price = stats[tok]['price_usd'] / stats['ETH']['price_usd']
           prev = stats[tok]['price_usd']
           stats[tok]['price_usd'] = (0.75 * float(pair['Last']) + 0.25 * price) * stats['ETH']['price_usd']
-          rates = [ r + stats[tok]['price_usd'] - prev for r in rates ]
+          rates = [ r + (stats[tok]['price_usd'] - prev) * r / prev for r in rates ]
           stats[tok]['percent_change_1h'] = 100. - 100. * rates[1] / rates[0]
           stats[tok]['percent_change_24h'] = 100. - 100. * rates[2] / rates[0]
           stats[tok]['percent_change_7d'] = 100. - 100. * rates[3] / rates[0]
@@ -185,13 +182,13 @@ def update_coins():
         tok = pair['symbol'][:-3].replace('BCC','BCH')
         if tok in stats.keys() and not isfiat(tok):
           rates = [ stats[tok]['price_usd'],
-          stats[tok]['price_usd'] * (1. + stats[tok]['percent_change_1h'] / 100.),
-          stats[tok]['price_usd'] * (1. + stats[tok]['percent_change_24h'] / 100.),
-          stats[tok]['price_usd'] * (1. + stats[tok]['percent_change_7d'] / 100.) ]
+          stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_1h'] / 100.),
+          stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_24h'] / 100.),
+          stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_7d'] / 100.) ]
           price = stats[tok]['price_usd'] / stats['ETH']['price_usd']
           prev = stats[tok]['price_usd']
           stats[tok]['price_usd'] = (0.75 * float(pair['price']) + 0.25 * price) * stats['ETH']['price_usd']
-          rates = [ r + stats[tok]['price_usd'] - prev for r in rates ]
+          rates = [ r + (stats[tok]['price_usd'] - prev) * r / prev for r in rates ]
           stats[tok]['percent_change_1h'] = 100. - 100. * rates[1] / rates[0]
           stats[tok]['percent_change_24h'] = 100. - 100. * rates[2] / rates[0]
           stats[tok]['percent_change_7d'] = 100. - 100. * rates[3] / rates[0]
