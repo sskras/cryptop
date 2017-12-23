@@ -164,13 +164,17 @@ def update_coins():
       if pair['MarketName'].split('-')[0] == 'ETH':
         tok = pair['MarketName'].split('-')[1].replace('BCC','BCH')
         if tok in stats.keys() and not isfiat(tok):
+          rates = [ stats[tok]['price_usd'],
+          stats[tok]['price_usd'] * (1. + stats[tok]['percent_change_1h'] / 100.),
+          stats[tok]['price_usd'] * (1. + stats[tok]['percent_change_24h'] / 100.),
+          stats[tok]['price_usd'] * (1. + stats[tok]['percent_change_7d'] / 100.) ]
           price = stats[tok]['price_usd'] / stats['ETH']['price_usd']
           prev = stats[tok]['price_usd']
           stats[tok]['price_usd'] = (0.75 * float(pair['Last']) + 0.25 * price) * stats['ETH']['price_usd']
-          #ratio = 100. * stats[tok]['price_usd'] / prev
-          #stats[tok]['percent_change_1h'] = 100. - ratio / (1. - stats[tok]['percent_change_1h'] / 100.)
-          #stats[tok]['percent_change_24h'] = 100. - ratio / (1. - stats[tok]['percent_change_24h'] / 100.)
-          #stats[tok]['percent_change_7d'] = 100. - ratio / (1. - stats[tok]['percent_change_7d'] / 100.)
+          rates = [ r + stats[tok]['price_usd'] - prev for r in rates ]
+          stats[tok]['percent_change_1h'] = 100. - 100. * rates[1] / rates[0]
+          stats[tok]['percent_change_24h'] = 100. - 100. * rates[2] / rates[0]
+          stats[tok]['percent_change_7d'] = 100. - 100. * rates[3] / rates[0]
   try:
     ret = requests.get('https://www.binance.com/api/v1/ticker/allPrices').json()
   except:
@@ -180,13 +184,17 @@ def update_coins():
       if pair['symbol'][-3:] == 'ETH':
         tok = pair['symbol'][:-3].replace('BCC','BCH')
         if tok in stats.keys() and not isfiat(tok):
+          rates = [ stats[tok]['price_usd'],
+          stats[tok]['price_usd'] * (1. + stats[tok]['percent_change_1h'] / 100.),
+          stats[tok]['price_usd'] * (1. + stats[tok]['percent_change_24h'] / 100.),
+          stats[tok]['price_usd'] * (1. + stats[tok]['percent_change_7d'] / 100.) ]
           price = stats[tok]['price_usd'] / stats['ETH']['price_usd']
           prev = stats[tok]['price_usd']
           stats[tok]['price_usd'] = (0.75 * float(pair['price']) + 0.25 * price) * stats['ETH']['price_usd']
-          #ratio = 100. * stats[tok]['price_usd'] / prev
-          #stats[tok]['percent_change_1h'] = 100. - ratio / (1. - stats[tok]['percent_change_1h'] / 100.)
-          #stats[tok]['percent_change_24h'] = 100. - ratio / (1. - stats[tok]['percent_change_24h'] / 100.)
-          #stats[tok]['percent_change_7d'] = 100. - ratio / (1. - stats[tok]['percent_change_7d'] / 100.)
+          rates = [ r + stats[tok]['price_usd'] - prev for r in rates ]
+          stats[tok]['percent_change_1h'] = 100. - 100. * rates[1] / rates[0]
+          stats[tok]['percent_change_24h'] = 100. - 100. * rates[2] / rates[0]
+          stats[tok]['percent_change_7d'] = 100. - 100. * rates[3] / rates[0]
 
   global coinstats
   coinstats = stats
