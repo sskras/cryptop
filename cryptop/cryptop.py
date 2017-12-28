@@ -168,7 +168,7 @@ def update_coins():
         stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_24h'] / 100.),
         stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_7d'] / 100.) ]
         prev = stats[tok]['price_usd']
-        ratio = float(ret['RAW'][tok]['USD']['PRICE'] / prev
+        ratio = float(ret['RAW'][tok]['USD']['PRICE']) / prev
         if ratio > 0.75 and ratio < 1.5:
           stats[tok]['price_usd'] = 0.25 * float(ret['RAW'][tok]['USD']['PRICE']) + 0.75 * prev
           rates = [ r + (stats[tok]['price_usd'] - prev) * r / prev for r in rates ]
