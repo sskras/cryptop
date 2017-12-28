@@ -168,11 +168,13 @@ def update_coins():
         stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_24h'] / 100.),
         stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_7d'] / 100.) ]
         prev = stats[tok]['price_usd']
-        stats[tok]['price_usd'] = 0.25 * float(ret['RAW'][tok]['USD']['PRICE']) + 0.75 * prev
-        rates = [ r + (stats[tok]['price_usd'] - prev) * r / prev for r in rates ]
-        stats[tok]['percent_change_1h'] = 100. - 100. * rates[1] / rates[0]
-        stats[tok]['percent_change_24h'] = 100. - 100. * rates[2] / rates[0]
-        stats[tok]['percent_change_7d'] = 100. - 100. * rates[3] / rates[0]
+        ratio = float(ret['RAW'][tok]['USD']['PRICE'] / prev
+        if ratio > 0.75 and ratio < 1.5:
+          stats[tok]['price_usd'] = 0.25 * float(ret['RAW'][tok]['USD']['PRICE']) + 0.75 * prev
+          rates = [ r + (stats[tok]['price_usd'] - prev) * r / prev for r in rates ]
+          stats[tok]['percent_change_1h'] = 100. - 100. * rates[1] / rates[0]
+          stats[tok]['percent_change_24h'] = 100. - 100. * rates[2] / rates[0]
+          stats[tok]['percent_change_7d'] = 100. - 100. * rates[3] / rates[0]
 
   try:
     ret = requests.get('https://bittrex.com/api/v1.1/public/getmarketsummaries').json()
