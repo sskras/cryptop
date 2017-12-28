@@ -229,52 +229,52 @@ def ticker():
     update_coins()
 
 bittrex_tokens = {}
-bittrex_time = 0
 def update_bittrex(key, secret):
-  global bittrex_time
-  if time.time() - bittrex_time > 15:
-    bittrex_time = time.time()
-    try:
-      url = "https://bittrex.com/api/v1.1/account/getbalances?apikey=%s&nonce=%d&" % (key, int(time.time() * 1000))
-      ret = requests.get(url,
-          headers={"apisign": hmac.new(secret.encode(), url.encode(), hashlib.sha512).hexdigest() },
-          timeout=5).json()
-      if 'result' in ret and ret['result'] is not None:
-        bittrex_tokens[key] = ret
-    except:
-      if not key in bittrex_tokens.keys():
-        bittrex_tokens[key] = { 'result' : [] }
+  try:
+    url = "https://bittrex.com/api/v1.1/account/getbalances?apikey=%s&nonce=%d&" % (key, int(time.time() * 1000))
+    ret = requests.get(url,
+        headers={"apisign": hmac.new(secret.encode(), url.encode(), hashlib.sha512).hexdigest() },
+        timeout=5).json()
+    if 'result' in ret and ret['result'] is not None:
+      bittrex_tokens[key] = ret
+  except:
+    if not key in bittrex_tokens.keys():
+      bittrex_tokens[key] = { 'result' : [] }
   return bittrex_tokens[key]
 
+bittrex_time = 0
 def bittrex(key, secret):
-  if not key in bittrex_tokens.keys() or time.time() - bittrex_time < 15:
+  global bittrex_time
+  if not key in bittrex_tokens.keys():
     return update_bittrex(key, secret)
-  _thread.start_new_thread(update_bittrex, (key,secret))
+  if time.time() - bittrex_time > 15:
+    bittrex_time = time.time()
+    _thread.start_new_thread(update_bittrex, (key,secret))
   return bittrex_tokens[key]
 
 binance_tokens = {}
-binance_time = 0
 def update_binance(key, secret):
-  global binance_time
-  if time.time() - binance_time > 15:
-    binance_time = time.time()
-    try:
-      url = "https://api.binance.com/api/v3/account?timestamp=%d" % int(time.time() * 1000)
-      url += '&signature=' + hmac.new(secret.encode('utf-8'), url.split('?')[1].encode('utf-8'), hashlib.sha256).hexdigest()
-      ret = requests.get(url,
-          headers={'X-MBX-APIKEY': key, 'Accept': 'application/json', 'User-Agent': 'binance/python'},
-          timeout=5).json()
-      if 'balances' in ret and ret['balances'] is not None:
-        binance_tokens[key] = ret
-    except:
-      if not key in binance_tokens.keys():
-        binance_tokens[key] = { 'balances' : [] }
+  try:
+    url = "https://api.binance.com/api/v3/account?timestamp=%d" % int(time.time() * 1000)
+    url += '&signature=' + hmac.new(secret.encode('utf-8'), url.split('?')[1].encode('utf-8'), hashlib.sha256).hexdigest()
+    ret = requests.get(url,
+        headers={'X-MBX-APIKEY': key, 'Accept': 'application/json', 'User-Agent': 'binance/python'},
+        timeout=5).json()
+    if 'balances' in ret and ret['balances'] is not None:
+      binance_tokens[key] = ret
+  except:
+    if not key in binance_tokens.keys():
+      binance_tokens[key] = { 'balances' : [] }
   return binance_tokens[key]
 
+binance_time = 0
 def binance(key, secret):
-  if not key in binance_tokens.keys() or time.time() - binance_time < 15:
+  global binance_time
+  if not key in binance_tokens.keys():
     return update_binance(key, secret)
-  _thread.start_new_thread(update_binance, (key,secret))
+  if time.time() - binance_time > 15:
+    binance_time = time.time()
+    _thread.start_new_thread(update_binance, (key,secret))
   return binance_tokens[key]
 
 erc20_block = {}
