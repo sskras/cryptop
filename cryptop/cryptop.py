@@ -95,6 +95,7 @@ def read_configuration(confpath):
 coinstats = {}
 coinmap = {'KNC' : 'kyber-network', 'BTG' : 'bitcoin-gold'}
 CCLIST = requests.get('https://www.cryptocompare.com/api/data/coinlist/').json()['Data']
+CCSET = set([])
 def update_coins():
   global CURRENCYLIST
   stats = {}
@@ -113,6 +114,7 @@ def update_coins():
     stats[coin]['percent_change_7d'] = 100. - 100. * (ret['Data'][-169]['close'] / ret['Data'][-1]['close'])
 
   cmc = http.client.HTTPSConnection("api.coinmarketcap.com")
+  clist = []
   try:
     cmc.request("GET", '/v1/ticker/?convert=EUR&limit=2000', {}, {})
     data = cmc.getresponse()
@@ -122,6 +124,8 @@ def update_coins():
   for item in data[::-1]:
     if item['symbol'] in coinmap.keys() and coinmap[item['symbol']] != item['id']:
       continue
+    if item['symbol'] in CCLIST:
+      clist.append(item['symbol'])
     if item['symbol'] in CURRENCYLIST and not isfiat(item['symbol']) and not item['symbol'] in cmclist:
       stats[item['symbol']]['24h_volume_usd'] = item['24h_volume_usd']
     else:
@@ -151,6 +155,24 @@ def update_coins():
       stats[fiat]['percent_change_24h'] = 100. - 100. * rates[1][1] / rates[0][1]
       stats[fiat]['percent_change_1h'] = stats[fiat]['percent_change_24h'] / 24.
       stats[fiat]['percent_change_7d'] = 100. - 100. * rates[7][1] / rates[0][1]
+
+  if CCSET:
+    try:
+      ret = requests.get('https://min-api.cryptocompare.com/data/pricemultifull?fsyms=%s&tsyms=USD' % ','.join(list(CCSET))).json()
+    except:
+      pass
+    else:
+      for tok in ret['RAW']:
+        rates = [ stats[tok]['price_usd'],
+        stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_1h'] / 100.),
+        stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_24h'] / 100.),
+        stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_7d'] / 100.) ]
+        prev = stats[tok]['price_usd']
+        stats[tok]['price_usd'] = 0.25 * float(ret['RAW'][tok]['USD']['PRICE']) + 0.75 * prev
+        rates = [ r + (stats[tok]['price_usd'] - prev) * r / prev for r in rates ]
+        stats[tok]['percent_change_1h'] = 100. - 100. * rates[1] / rates[0]
+        stats[tok]['percent_change_24h'] = 100. - 100. * rates[2] / rates[0]
+        stats[tok]['percent_change_7d'] = 100. - 100. * rates[3] / rates[0]
 
   try:
     ret = requests.get('https://bittrex.com/api/v1.1/public/getmarketsummaries').json()
@@ -223,7 +245,7 @@ def update_bittrex(key, secret):
   return bittrex_tokens[key]
 
 def bittrex(key, secret):
-  if not key in bittrex_tokens.keys():
+  if not key in bittrex_tokens.keys() or time.time() - bittrex_time < 15:
     return update_bittrex(key, secret)
   _thread.start_new_thread(update_bittrex, (key,secret))
   return bittrex_tokens[key]
@@ -248,7 +270,7 @@ def update_binance(key, secret):
   return binance_tokens[key]
 
 def binance(key, secret):
-  if not key in binance_tokens.keys():
+  if not key in binance_tokens.keys() or time.time() - binance_time < 15:
     return update_binance(key, secret)
   _thread.start_new_thread(update_binance, (key,secret))
   return binance_tokens[key]
@@ -390,7 +412,7 @@ def get_ethereum(address):
   return tokens
 
 def ethereum(address):
-  if not address in tokens.keys():
+  if not address in tokens.keys() or time.time() - tokens[address]['.'] < 60:
     return get_ethereum(address)
   _thread.start_new_thread(get_ethereum, (address,))
   return tokens
@@ -647,6 +669,11 @@ def write_scr(stdscr, wallet, y, x):
     if not coinl[i].lower() in labels and not any([ coinl[i] in coin[k] for k in coin.keys() ]):
       coin[''].append(coinl[i])
       held[''].append(0)
+
+  global CCSET
+  CCSET= set([])
+  for k in coin.keys():
+    CCSET = set(list(CCSET) + coin[k])
 
   off = 0
   stdscr.erase()
