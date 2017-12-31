@@ -586,8 +586,8 @@ def str_formatter(coin, val, held, ticks):
 
 def write_coins(name, coins, held, stdscr, x, y, off=0):
   width, _ = terminal_size()
-  width -= FIELD_OFFSET
-  ticks = [FIELD + 8,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12]
+  width -= 5
+  ticks = [FIELD + 12 - FIELD_OFFSET,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12]
   diffs = [0,0,2,2,2,3,3,3]
   scale = max(width / float(sum(ticks)), 1.0)
   hticks = [int(t * scale) for t in ticks]
@@ -825,7 +825,7 @@ def main():
 
   global FIELD, FIELD_OFFSET
   FIELD = float(CONFIG['theme'].get('field_length', 0))
-  FIELD_OFFSET = float(CONFIG['theme'].get('field_offset', 5))
+  FIELD_OFFSET = float(CONFIG['theme'].get('field_offset', 3))
 
   requests_cache.install_cache(cache_name='api_cache', backend='memory',
     expire_after=int(CONFIG['api'].get('cache', 60)))
