@@ -92,9 +92,10 @@ def read_configuration(confpath):
   CONFIG.read(confpath)
   return CONFIG
 
+rget = lambda url:requests.get(url,timeout=5).json()
 coinstats = {}
 coinmap = {'KNC' : 'kyber-network', 'BTG' : 'bitcoin-gold'}
-CCLIST = requests.get('https://www.cryptocompare.com/api/data/coinlist/').json()['Data']
+CCLIST = rget('https://www.cryptocompare.com/api/data/coinlist/')['Data']
 CCSET = set([])
 def update_coins():
   global CURRENCYLIST
@@ -102,7 +103,7 @@ def update_coins():
   cmclist = set([])
   for coin in [ c for c in CURRENCYLIST if not isfiat(c) ]:
     try:
-      ret = requests.get('https://min-api.cryptocompare.com/data/histohour?fsym=%s&tsym=USD&toTs=%d&limit=175' % (coin.upper(),int(time.time()))).json()
+      ret = rget('https://min-api.cryptocompare.com/data/histohour?fsym=%s&tsym=USD&toTs=%d&limit=175' % (coin.upper(),int(time.time())))
     except:
       cmclist.add(coin.upper())
       continue
@@ -137,18 +138,18 @@ def update_coins():
     if not fiat in stats.keys():
       stats[fiat] = {}
     try:
-      stats[fiat]['price_usd'] = 1. / requests.get('https://api.fixer.io/latest?base=USD').json()['rates'][fiat]
+      stats[fiat]['price_usd'] = 1. / rget('https://api.fixer.io/latest?base=USD')['rates'][fiat]
       d24h = date.today() - timedelta(1)
-      r24h = 1. / requests.get('https://api.fixer.io/' + d24h.strftime('%Y-%m-%d') + '?base=USD').json()['rates'][fiat]
+      r24h = 1. / rget('https://api.fixer.io/' + d24h.strftime('%Y-%m-%d') + '?base=USD')['rates'][fiat]
       stats[fiat]['percent_change_24h'] = 100. - 100. * r24h / stats[fiat]['price_usd']
       stats[fiat]['percent_change_1h'] = stats[fiat]['percent_change_24h'] / 24.
 
       d7d = date.today() - timedelta(7)
-      r7d = 1. / requests.get('https://api.fixer.io/' + d7d.strftime('%Y-%m-%d') + '?base=USD').json()['rates'][fiat]
+      r7d = 1. / rget('https://api.fixer.io/' + d7d.strftime('%Y-%m-%d') + '?base=USD')['rates'][fiat]
       stats[fiat]['percent_change_7d'] = 100. - 100. * r7d / stats[fiat]['price_usd']
     except:
       try:
-        rates = requests.get('https://www.quandl.com/api/v3/datasets/ECB/EURUSD').json()['dataset']['data']
+        rates = rget('https://www.quandl.com/api/v3/datasets/ECB/EURUSD')['dataset']['data']
       except:
         continue
       stats[fiat]['price_usd'] = rates[0][1]
@@ -158,7 +159,7 @@ def update_coins():
 
   if CCSET:
     try:
-      ret = requests.get('https://min-api.cryptocompare.com/data/pricemultifull?fsyms=%s&tsyms=USD' % ','.join(list(CCSET))).json()
+      ret = rget('https://min-api.cryptocompare.com/data/pricemultifull?fsyms=%s&tsyms=USD' % ','.join(list(CCSET)))
     except:
       pass
     else:
@@ -177,7 +178,7 @@ def update_coins():
           stats[tok]['percent_change_7d'] = 100. - 100. * rates[3] / rates[0]
 
   try:
-    ret = requests.get('https://bittrex.com/api/v1.1/public/getmarketsummaries').json()
+    ret = rget('https://bittrex.com/api/v1.1/public/getmarketsummaries')
   except:
     pass
   else:
@@ -197,7 +198,7 @@ def update_coins():
           stats[tok]['percent_change_24h'] = 100. - 100. * rates[2] / rates[0]
           stats[tok]['percent_change_7d'] = 100. - 100. * rates[3] / rates[0]
   try:
-    ret = requests.get('https://www.binance.com/api/v1/ticker/allPrices').json()
+    ret = rget('https://www.binance.com/api/v1/ticker/allPrices')
   except:
     pass
   else:
@@ -355,8 +356,7 @@ def get_erc20_balance(token, address):
     #tokens[address][token]['time'] = time.time()
     try:
       if token.lower() ==  'eth':
-        r = requests.get("https://etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address, {}, {})
-        data = r.json()
+        data = rget("https://etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address)
         if 'result' in data and data['result']:
           tokens[address][token]['balance'] = float(data['result']) / 1e18
           tokens[address]['token']['eth_balance'] = float(data['result']) / 1e18
@@ -372,8 +372,8 @@ def get_erc20_balance(token, address):
           start = data.find('/token/0x', end) + len('/token/')
           end = data.find('>',start) - 2
         contract = data[start:end]
-        r = requests.get("https://api.tokenbalance.com/token/%s/%s" % (contract,address))
-        tokens[address][token].update(r.json())
+        r = rget("https://api.tokenbalance.com/token/%s/%s" % (contract,address))
+        tokens[address][token].update(r)
     except:
       pass
 
@@ -389,8 +389,7 @@ def get_ethereum(address):
 
   if time.time() - tokens[address]['.'] > 60:
     try:
-      r = requests.get('https://api.ethplorer.io/getAddressInfo/%s?apiKey=freekey' % address)
-      data = r.json()
+      data = rget('https://api.ethplorer.io/getAddressInfo/%s?apiKey=freekey' % address)
       tokens[address] = {'.' : time.time(), 'ETH':data['ETH']['balance']}
       apidown = not tokens[address]['ETH']
     except Exception:
@@ -401,8 +400,7 @@ def get_ethereum(address):
         if tok['tokenInfo']['symbol'] not in BLACKLIST:
           tokens[address][tok['tokenInfo']['symbol']], _ = get_erc20_balance(tok['tokenInfo']['symbol'], address)
       try:
-        r = requests.get("https://api.etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address)
-        balance = r.json()
+        balance = rget("https://api.etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address)
       except Exception:
         return tokens
       if 'result' in balance.keys():
@@ -469,12 +467,12 @@ def get_price_old(coin, curr=None):
     last_price[coin] = [(0,0,0) for c in coin.split(',')]
 
   try:
-    r = requests.get(fmt.format(coin, curr))
+    r = rget(fmt.format(coin, curr))
   except requests.exceptions.RequestException:
     return last_price[coin]
 
   try:
-    data_raw = r.json()['RAW']
+    data_raw = r['RAW']
     last_price[coin] = [(data_raw[c][curr]['PRICE'],
         data_raw[c][curr]['MKTCAP'] / 1e6,
         data_raw[c][curr]['CHANGEPCT24HOUR'] or 0.0) for c in coin.split(',')]
