@@ -825,7 +825,7 @@ def main():
 
   global FIELD, FIELD_OFFSET
   FIELD = float(CONFIG['theme'].get('field_length', 0))
-  FIELD_OFFSET = float(CONFIG['theme'].get('field_offset', 3))
+  FIELD_OFFSET = float(CONFIG['theme'].get('field_offset', 4))
 
   requests_cache.install_cache(cache_name='api_cache', backend='memory',
     expire_after=int(CONFIG['api'].get('cache', 60)))
