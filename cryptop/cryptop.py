@@ -384,44 +384,44 @@ def get_ethereum(address):
   import json
 
   global BLACKLIST, tokens, ethplorer_conn, etherscan_conn
-  if not address in tokens:
-    tokens[address] = {'.' : 0}
-
-  if time.time() - tokens[address]['.'] > 60:
+  tinfo = {'.' : 0}
+  try:
+    data = rget('https://api.ethplorer.io/getAddressInfo/%s?apiKey=freekey' % address)
+    tinfo = {'.' : time.time(), 'ETH':data['ETH']['balance']}
+    apidown = not tinfo['ETH']
+  except Exception:
+    apidown=True
+    data={}
+  if apidown and 'tokens' in data.keys():
+    for tok in data['tokens']:
+      if tok['tokenInfo']['symbol'] not in BLACKLIST:
+        tinfo[tok['tokenInfo']['symbol']], _ = get_erc20_balance(tok['tokenInfo']['symbol'], address)
     try:
-      data = rget('https://api.ethplorer.io/getAddressInfo/%s?apiKey=freekey' % address)
-      tokens[address] = {'.' : time.time(), 'ETH':data['ETH']['balance']}
-      apidown = not tokens[address]['ETH']
+      balance = rget("https://api.etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address)
     except Exception:
-      apidown=True
-      data={}
-    if apidown and 'tokens' in data.keys():
-      for tok in data['tokens']:
-        if tok['tokenInfo']['symbol'] not in BLACKLIST:
-          tokens[address][tok['tokenInfo']['symbol']], _ = get_erc20_balance(tok['tokenInfo']['symbol'], address)
-      try:
-        balance = rget("https://api.etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address)
-      except Exception:
-        return tokens
-      if 'result' in balance.keys():
-        tokens[address]['ETH'] = float(balance['result']) / 1e18
-    elif 'tokens' in data.keys():
-      for tok in data['tokens']:
-        if tok['tokenInfo']['symbol'] not in BLACKLIST:
-          if time.time() - tok['tokenInfo']['lastUpdated'] > 60 * 60:
-            try:
-              r = rget('https://api.etherscan.io/api?module=account&action=tokenbalance&contractaddress=%s&address=%s&tag=latest&apikey=' % (tok['tokenInfo']['address'], address))
-              tokens[address][tok['tokenInfo']['symbol']] = float(r['result'] or 0) / 10**int(tok['tokenInfo']['decimals'])
-            except:
-              tokens[address][tok['tokenInfo']['symbol']] = tok['balance'] / 10**int(tok['tokenInfo']['decimals'])
-          else:
-            tokens[address][tok['tokenInfo']['symbol']] = tok['balance'] / 10**int(tok['tokenInfo']['decimals'])
+      return tokens
+    if 'result' in balance.keys():
+      tinfo['ETH'] = float(balance['result']) / 1e18
+  elif 'tokens' in data.keys():
+    for tok in data['tokens']:
+      if tok['tokenInfo']['symbol'] not in BLACKLIST:
+        if time.time() - tok['tokenInfo']['lastUpdated'] > 60 * 60:
+          try:
+            r = rget('https://api.etherscan.io/api?module=account&action=tokenbalance&contractaddress=%s&address=%s&tag=latest&apikey=' % (tok['tokenInfo']['address'], address))
+            tinfo[tok['tokenInfo']['symbol']] = float(r['result'] or 0) / 10**int(tok['tokenInfo']['decimals'])
+          except:
+            tinfo[tok['tokenInfo']['symbol']] = tok['balance'] / 10**int(tok['tokenInfo']['decimals'])
+        else:
+          tinfo[tok['tokenInfo']['symbol']] = tok['balance'] / 10**int(tok['tokenInfo']['decimals'])
+  tokens[address] = tinfo
   return tokens
 
 def ethereum(address):
-  if not address in tokens.keys() or time.time() - tokens[address]['.'] < 60:
+  if not address in tokens.keys():
     return get_ethereum(address)
-  _thread.start_new_thread(get_ethereum, (address,))
+  elif time.time() - tokens[address]['.'] > 30:
+    tokens[address]['.'] = time.time()
+    _thread.start_new_thread(get_ethereum, (address,))
   return tokens
 
 CONTRACTS = {}
