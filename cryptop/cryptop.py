@@ -405,7 +405,7 @@ def get_ethereum(address):
   elif 'tokens' in data.keys():
     for tok in data['tokens']:
       if tok['tokenInfo']['symbol'] not in BLACKLIST:
-        if time.time() - tok['tokenInfo']['lastUpdated'] > 60 * 60:
+        if True: #time.time() - tok['tokenInfo']['lastUpdated'] > 60 * 60:
           try:
             r = rget('https://api.etherscan.io/api?module=account&action=tokenbalance&contractaddress=%s&address=%s&tag=latest&apikey=' % (tok['tokenInfo']['address'], address))
             tinfo[tok['tokenInfo']['symbol']] = float(r['result'] or 0) / 10**int(tok['tokenInfo']['decimals'])
