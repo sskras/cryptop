@@ -424,42 +424,25 @@ def ethereum(address):
     _thread.start_new_thread(get_ethereum, (address,))
   return tokens
 
-CONTRACTS = {}
-ETHERDELTA = {}
-def get_etherdelta(token, address):
-  import json
-  conn = http.client.HTTPSConnection("api.etherdelta.com")
-  global CONTRACTS, ETHERELTA
-  token = token.upper()
-  address='0xB7edBA4d444Ebca43A41880A8189c03bf52d1152'.lower()
-  token = 'LINK'
+btcb = {}
+def get_bitcoin(address):
+  binfo = {'.' : 0, 'balance' : 0}
+  if not address in btcb:
+    btcb[address] = binfo
+  try:
+    binfo['balance'] = float(rget('https://blockchain.info/q/addressbalance/%s' % address)) / 1e8
+    btcb[address] = binfo
+  except:
+    pass
+  return btcb
 
-  if not address in ETHERDELTA.keys():
-    ETHERDELTA[address] = {}
-  if not token in ETHERDELTA[address]:
-    ETHERDELTA[address][token] = {'.' : 0, 'balance' :  0.0}
-
-  if not CONTRACTS.keys():
-    conn.request('GET', '/returnTicker')
-    data = json.loads(conn.getresponse().read().decode())
-    for k in data.keys():
-      if k.startswith('ETH_'):
-        CONTRACTS[k[4:]] = data[k]['tokenAddr']
-
-  if not token in CONTRACTS.keys():
-    return 0.0
-
-  if time.time() - ETHERDELTA[address][token]['.'] > 60:
-    ETHERDELTA[address][token]['.'] = time.time()
-    conn.request('GET','/funds/%s/%s/0' % (address,CONTRACTS[token]))
-
-    data = json.loads(conn.getresponse().read().decode())
-    #try:
-    #  data = json.loads(conn.getresponse().read().decode())
-    #except:
-    #  return 0.0
-    assert False, str(data)
-  return ETHERDELTA[address][token]
+def bitcoin(address):
+  if not address in btcb.keys():
+    return get_bitcoin(address)[address]['balance']
+  elif time.time() - btcb[address]['.'] > 30:
+    btcb[address]['.'] = time.time()
+    _thread.start_new_thread(get_bitcoin, (address,))
+  return btcb[address]['balance']
 
 last_price = {}
 def get_price_old(coin, curr=None):
@@ -668,6 +651,11 @@ def write_scr(stdscr, wallet, y, x):
       tokens = ethereum(heldl[i])
       coin[coinl[i].lower()] = [ tok for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() and tokens[heldl[i]][tok] >= 0.01 ]
       held[coinl[i].lower()] = [ tokens[heldl[i]][tok] for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() and tokens[heldl[i]][tok] >= 0.01 ]
+      labels.append(coinl[i].lower())
+    elif (heldl[i][0] == '3' or heldl[i][0] == '1') and len(heldl[i]) > 24:
+      coin[coinl[i].lower()] = ['BTC']
+      assert not isinstance(bitcoin(heldl[i]),dict), str(bitcoin(heldl[i]).keys())
+      held[coinl[i].lower()] = [bitcoin(heldl[i])]
       labels.append(coinl[i].lower())
     elif float(heldl[i]) >= 0.01:
       coin['custom'].append(coinl[i])
