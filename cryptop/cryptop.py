@@ -114,6 +114,8 @@ def update_coins():
       stats[coin]['percent_change_1h'] = 100. - 100. * (ret['Data'][-2]['close'] / ret['Data'][-1]['close'])
       stats[coin]['percent_change_24h'] = 100. - 100. * (ret['Data'][-25]['close'] / ret['Data'][-1]['close'])
       stats[coin]['percent_change_7d'] = 100. - 100. * (ret['Data'][-169]['close'] / ret['Data'][-1]['close'])
+    else:
+      cmclist.add(coin.upper())
 
   cmc = http.client.HTTPSConnection("api.coinmarketcap.com")
   clist = []
