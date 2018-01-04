@@ -109,10 +109,11 @@ def update_coins():
       continue
     if not coin in stats.keys():
       stats[coin] = {}
-    stats[coin]['price_usd'] = ret['Data'][-1]['close']
-    stats[coin]['percent_change_1h'] = 100. - 100. * (ret['Data'][-2]['close'] / ret['Data'][-1]['close'])
-    stats[coin]['percent_change_24h'] = 100. - 100. * (ret['Data'][-25]['close'] / ret['Data'][-1]['close'])
-    stats[coin]['percent_change_7d'] = 100. - 100. * (ret['Data'][-169]['close'] / ret['Data'][-1]['close'])
+    if ret['Data']:
+      stats[coin]['price_usd'] = ret['Data'][-1]['close']
+      stats[coin]['percent_change_1h'] = 100. - 100. * (ret['Data'][-2]['close'] / ret['Data'][-1]['close'])
+      stats[coin]['percent_change_24h'] = 100. - 100. * (ret['Data'][-25]['close'] / ret['Data'][-1]['close'])
+      stats[coin]['percent_change_7d'] = 100. - 100. * (ret['Data'][-169]['close'] / ret['Data'][-1]['close'])
 
   cmc = http.client.HTTPSConnection("api.coinmarketcap.com")
   clist = []
