@@ -107,9 +107,9 @@ def update_coins():
     except:
       cmclist.add(coin.upper())
       continue
-    if not coin in stats.keys():
-      stats[coin] = {}
     if ret['Data']:
+      if not coin in stats.keys():
+        stats[coin] = {}
       stats[coin]['price_usd'] = ret['Data'][-1]['close']
       stats[coin]['percent_change_1h'] = 100. - 100. * (ret['Data'][-2]['close'] / ret['Data'][-1]['close'])
       stats[coin]['percent_change_24h'] = 100. - 100. * (ret['Data'][-25]['close'] / ret['Data'][-1]['close'])
