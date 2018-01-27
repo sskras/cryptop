@@ -95,7 +95,7 @@ def read_configuration(confpath):
 rget = lambda url:requests.get(url,timeout=5).json()
 coinstats = {}
 coinmap = {'KNC' : 'kyber-network', 'BTG' : 'bitcoin-gold'}
-CCLIST = rget('https://www.cryptocompare.com/api/data/coinlist/')['Data']
+CCLIST = rget('https://min-api.cryptocompare.com/data/all/coinlist/')['Data']
 CCSET = set([])
 def update_coins():
   global CURRENCYLIST
