@@ -92,7 +92,7 @@ def read_configuration(confpath):
   CONFIG.read(confpath)
   return CONFIG
 
-rget = lambda url:requests.get(url,timeout=5).json()
+rget = lambda url:requests.get(url,timeout=3).json()
 coinstats = {}
 coinmap = {'KNC' : 'kyber-network', 'BTG' : 'bitcoin-gold'}
 CCLIST = rget('https://min-api.cryptocompare.com/data/all/coinlist/')['Data']
@@ -186,7 +186,7 @@ def update_coins():
     pass
   else:
     for pair in ret['result']:
-      if pair['MarketName'].split('-')[0] == 'ETH':
+      if pair['MarketName'].split('-')[0] == 'ETH' and pair['Last'] is not None:
         tok = pair['MarketName'].split('-')[1].replace('BCC','BCH')
         if tok in stats.keys() and not isfiat(tok):
           rates = [ stats[tok]['price_usd'],
@@ -215,6 +215,8 @@ def update_coins():
           stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_7d'] / 100.) ]
           price = stats[tok]['price_usd'] / stats['ETH']['price_usd']
           prev = stats[tok]['price_usd']
+          if prev == 0:
+            prev = price if price > 0 else 1
           stats[tok]['price_usd'] = (0.75 * float(pair['price']) + 0.25 * price) * stats['ETH']['price_usd']
           rates = [ r + (stats[tok]['price_usd'] - prev) * r / prev for r in rates ]
           stats[tok]['percent_change_1h'] = 100. - 100. * rates[1] / rates[0]
@@ -228,7 +230,7 @@ def ticker():
   import time
   ts = 0
   while True:
-    time.sleep(max(min(int(time.time()) - ts, 15), 2))
+    time.sleep(max(min(int(time.time()) - ts, 20), 2))
     ts = int(time.time())
     update_coins()
 
@@ -251,7 +253,7 @@ def bittrex(key, secret):
   global bittrex_time
   if not key in bittrex_tokens.keys():
     return update_bittrex(key, secret)
-  if time.time() - bittrex_time > 15:
+  if time.time() - bittrex_time > 20:
     bittrex_time = time.time()
     _thread.start_new_thread(update_bittrex, (key,secret))
   return bittrex_tokens[key]
@@ -276,7 +278,7 @@ def binance(key, secret):
   global binance_time
   if not key in binance_tokens.keys():
     return update_binance(key, secret)
-  if time.time() - binance_time > 15:
+  if time.time() - binance_time > 20:
     binance_time = time.time()
     _thread.start_new_thread(update_binance, (key,secret))
   return binance_tokens[key]
@@ -379,8 +381,8 @@ def get_erc20_balance(token, address):
         tokens[address][token].update(r)
     except:
       pass
-
-  return tokens[address][token]['balance'],tokens[address][token]['eth_balance']
+  
+  return float(tokens[address][token]['balance']),float(tokens[address][token]['eth_balance'])
 
 tokens = {}
 def get_ethereum(address):
@@ -390,7 +392,7 @@ def get_ethereum(address):
   tinfo = {'.' : 0}
   try:
     data = rget('https://api.ethplorer.io/getAddressInfo/%s?apiKey=freekey' % address)
-    tinfo = {'.' : time.time(), 'ETH':data['ETH']['balance']}
+    tinfo = {'.' : time.time(), 'ETH' : data['ETH']['balance']}
     apidown = not tinfo['ETH']
   except Exception:
     apidown=True
@@ -413,9 +415,9 @@ def get_ethereum(address):
             r = rget('https://api.etherscan.io/api?module=account&action=tokenbalance&contractaddress=%s&address=%s&tag=latest&apikey=' % (tok['tokenInfo']['address'], address))
             tinfo[tok['tokenInfo']['symbol']] = float(r['result'] or 0) / 10**int(tok['tokenInfo']['decimals'])
           except:
-            tinfo[tok['tokenInfo']['symbol']] = tok['balance'] / 10**int(tok['tokenInfo']['decimals'])
+            tinfo[tok['tokenInfo']['symbol']] = float(tok['balance']) / 10**int(tok['tokenInfo']['decimals'])
         else:
-          tinfo[tok['tokenInfo']['symbol']] = tok['balance'] / 10**int(tok['tokenInfo']['decimals'])
+          tinfo[tok['tokenInfo']['symbol']] = float(tok['balance']) / 10**int(tok['tokenInfo']['decimals'])
   tokens[address] = tinfo
   return tokens
 
@@ -490,8 +492,12 @@ def get_price(coin, curr=None):
       price /= sf(coinstats[curr]['price_usd'])
       volume /= sf(coinstats[curr]['price_usd'])
       s1h = sf(coinstats[curr]['percent_change_1h'])/100.
-      s24h = sf(coinstats[curr]['percent_change_24h'])/100.
-      s7d = sf(coinstats[curr]['percent_change_7d'])/100.
+      try:
+        s24h = sf(coinstats[curr]['percent_change_24h'])/100.
+        s7d = sf(coinstats[curr]['percent_change_7d'])/100.
+      except:
+        s24h = sf(tok['24h_volume_usd']) / 100.
+        s7d = sf(coinstats[curr]['percent_change_7d'])/100.
       conv = lambda dx,dy: 1. - (1.-dx) / (1.-dy)
       c1h,c24h,c7d = conv(c1h,s1h), conv(c24h,s24h), conv(c7d,s7d)
     res.append((price, volume, c1h * 100, c24h * 100, c7d * 100))
@@ -825,8 +831,8 @@ def main():
   FIELD = float(CONFIG['theme'].get('field_length', 0))
   FIELD_OFFSET = float(CONFIG['theme'].get('field_offset', 4))
 
-  requests_cache.install_cache(cache_name='api_cache', backend='memory',
-    expire_after=int(CONFIG['api'].get('cache', 60)))
+  #requests_cache.install_cache(cache_name='api_cache', backend='memory',
+  #  expire_after=int(CONFIG['api'].get('cache', 60)))
 
   global WALLETFILE
   if len(sys.argv) > 1:
