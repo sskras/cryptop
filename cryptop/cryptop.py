@@ -163,9 +163,6 @@ def update_coins():
   if CCSET:
     try:
       ret = rget('https://min-api.cryptocompare.com/data/pricemultifull?fsyms=%s&tsyms=USD' % ','.join(list(CCSET)))
-    except:
-      pass
-    else:
       for tok in ret['RAW']:
         rates = [ stats[tok]['price_usd'],
         stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_1h'] / 100.),
@@ -179,6 +176,8 @@ def update_coins():
           stats[tok]['percent_change_1h'] = 100. - 100. * rates[1] / rates[0]
           stats[tok]['percent_change_24h'] = 100. - 100. * rates[2] / rates[0]
           stats[tok]['percent_change_7d'] = 100. - 100. * rates[3] / rates[0]
+    except:
+      pass
 
   try:
     ret = rget('https://bittrex.com/api/v1.1/public/getmarketsummaries')
