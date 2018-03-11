@@ -697,12 +697,12 @@ def write_scr(stdscr, wallet, y, x):
       '[A] Add coin [R] Remove coin [F] Switch currency [S] Sort [C] Cycle sort [Q] Exit', x,
       curses.color_pair(2))
 
-  global LOGTIME, LOGFILE
-  if time.time() - LOGTIME > 60:
-    LOGTIME = time.time()
-    log = { key or str(int(time.time())) : dict(zip(coin[key],held[key])) for key in sorted(coin.keys())}
-    with open(LOGFILE, 'a') as logfile:
-      print(json.dumps(log),file=logfile)
+  #global LOGTIME, LOGFILE
+  #if time.time() - LOGTIME > 60:
+  #  LOGTIME = time.time()
+  #  log = { key or str(int(time.time())) : dict(zip(coin[key],held[key])) for key in sorted(coin.keys())}
+  #  with open(LOGFILE, 'a') as logfile:
+  #    print(json.dumps(log),file=logfile)
 
 def read_wallet():
   ''' Reads the wallet data from its json file '''
