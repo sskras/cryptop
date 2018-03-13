@@ -207,7 +207,8 @@ def update_coins():
     for pair in ret:
       if pair['symbol'][-3:] == 'ETH':
         tok = pair['symbol'][:-3].replace('BCC','BCH')
-        if tok in stats.keys() and not isfiat(tok):
+        if isfiat(tok): continue
+        if tok in stats.keys():
           rates = [ stats[tok]['price_usd'],
           stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_1h'] / 100.),
           stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_24h'] / 100.),
@@ -221,6 +222,13 @@ def update_coins():
           stats[tok]['percent_change_1h'] = 100. - 100. * rates[1] / rates[0]
           stats[tok]['percent_change_24h'] = 100. - 100. * rates[2] / rates[0]
           stats[tok]['percent_change_7d'] = 100. - 100. * rates[3] / rates[0]
+        else:
+          stats[tok] = {}
+          stats[tok]['price_usd'] = float(pair['price']) * stats['ETH']['price_usd']
+          stats[tok]['percent_change_1h'] = 0
+          stats[tok]['percent_change_24h'] = 0
+          stats[tok]['percent_change_7d'] = 0
+          stats[tok]['24h_volume_usd'] = 0
 
   global coinstats
   coinstats = stats
