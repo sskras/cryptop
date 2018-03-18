@@ -104,6 +104,7 @@ def update_coins():
   for coin in [ c for c in CURRENCYLIST if not isfiat(c) ]:
     try:
       ret = rget('https://min-api.cryptocompare.com/data/histohour?fsym=%s&tsym=USD&toTs=%d&limit=175' % (coin.upper(),int(time.time())))
+      cmclist.add(coin.upper())
     except:
       cmclist.add(coin.upper())
       continue
