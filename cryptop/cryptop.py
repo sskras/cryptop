@@ -400,6 +400,7 @@ def get_ethereum(address):
   tinfo = {'.' : 0}
   try:
     data = rget('https://api.ethplorer.io/getAddressInfo/%s?apiKey=freekey' % address)
+    if 'error' in data and address in tokens: return tokens
     tinfo = {'.' : time.time(), 'ETH' : data['ETH']['balance']}
     apidown = not tinfo['ETH']
   except Exception:
@@ -414,7 +415,10 @@ def get_ethereum(address):
     except Exception:
       return tokens
     if 'result' in balance.keys():
-      tinfo['ETH'] = float(balance['result']) / 1e18
+      try:
+        tinfo['ETH'] = float(balance['result']) / 1e18
+      except:
+        return tokens
   elif 'tokens' in data.keys():
     for tok in data['tokens']:
       if tok['tokenInfo']['symbol'] not in BLACKLIST:
