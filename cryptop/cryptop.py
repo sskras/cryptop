@@ -220,9 +220,10 @@ def update_coins():
             prev = price if price > 0 else 1
           stats[tok]['price_usd'] = (0.75 * float(pair['price']) + 0.25 * price) * stats['ETH']['price_usd']
           rates = [ r + (stats[tok]['price_usd'] - prev) * r / prev for r in rates ]
-          stats[tok]['percent_change_1h'] = 100. - 100. * rates[1] / rates[0]
-          stats[tok]['percent_change_24h'] = 100. - 100. * rates[2] / rates[0]
-          stats[tok]['percent_change_7d'] = 100. - 100. * rates[3] / rates[0]
+          if rates[0]:
+            stats[tok]['percent_change_1h'] = 100. - 100. * rates[1] / rates[0]
+            stats[tok]['percent_change_24h'] = 100. - 100. * rates[2] / rates[0]
+            stats[tok]['percent_change_7d'] = 100. - 100. * rates[3] / rates[0]
         else:
           stats[tok] = {}
           stats[tok]['price_usd'] = float(pair['price']) * stats['ETH']['price_usd']
@@ -500,7 +501,7 @@ def get_price(coin, curr=None):
     tok = coinstats[v]
     sf = lambda x: float(x) if x is not None else 0
     price, volume, c1h, c24h, c7d = sf(tok['price_usd']), sf(tok['24h_volume_usd']), sf(tok['percent_change_1h'])/100., sf(tok['percent_change_24h'])/100., sf(tok['percent_change_7d'])/100.
-    if curr != 'USD':
+    if curr != 'USD' and 'price_usd' in coinstats[curr]:
       price /= sf(coinstats[curr]['price_usd'])
       volume /= sf(coinstats[curr]['price_usd'])
       s1h = sf(coinstats[curr]['percent_change_1h'])/100.
