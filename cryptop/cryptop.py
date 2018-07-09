@@ -663,31 +663,34 @@ def write_scr(stdscr, wallet, y, x):
 
   global CCSET, SHOW_BALANCES
 
-  if SHOW_BALANCES:
-    for i in range(len(coinl)):
-      if coinl[i].lower() == 'bittrex':
+  for i in range(len(coinl)):
+    if coinl[i].lower() == 'bittrex':
+      if SHOW_BALANCES:
         balance = bittrex(*heldl[i].split(':'))
         coin['bittrex'] = [ c['Currency'].replace('BCC','BCH') for c in balance['result'] if c['Balance'] >= 0.01 ]
         held['bittrex'] = [ c['Balance'] for c in balance['result'] if c['Balance'] >= 0.01 ]
-        labels.append('bittrex')
-      elif coinl[i].lower() == 'binance':
+      labels.append('bittrex')
+    elif coinl[i].lower() == 'binance':
+      if SHOW_BALANCES:
         balance = binance(*heldl[i].split(':'))
         coin['binance'] = [ c['asset'].replace('BCC','BCH') for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 ]
         held['binance'] = [ float(c['free']) + float(c['locked']) for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 ]
-        labels.append('binance')
-      elif heldl[i].lower().startswith('0x'):
+      labels.append('binance')
+    elif heldl[i].lower().startswith('0x'):
+      if SHOW_BALANCES:
         tokens = ethereum(heldl[i])
         coin[coinl[i].lower()] = [ tok for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() and tokens[heldl[i]][tok] >= 0.01 ]
         held[coinl[i].lower()] = [ tokens[heldl[i]][tok] for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() and tokens[heldl[i]][tok] >= 0.01 ]
-        labels.append(coinl[i].lower())
-      elif (heldl[i][0] == '3' or heldl[i][0] == '1') and len(heldl[i]) > 24:
+      labels.append(coinl[i].lower())
+    elif (heldl[i][0] == '3' or heldl[i][0] == '1') and len(heldl[i]) > 24:
+      if SHOW_BALANCES:
         coin[coinl[i].lower()] = ['BTC']
         assert not isinstance(bitcoin(heldl[i]),dict), str(bitcoin(heldl[i]).keys())
         held[coinl[i].lower()] = [bitcoin(heldl[i])]
-        labels.append(coinl[i].lower())
-      elif float(heldl[i]) >= 0.01:
-        coin['custom'].append(coinl[i])
-        held['custom'].append(float(heldl[i]))
+      labels.append(coinl[i].lower())
+    elif float(heldl[i]) >= 0.01 and SHOW_BALANCES:
+      coin['custom'].append(coinl[i])
+      held['custom'].append(float(heldl[i]))
   for i in range(len(coinl)):
     if not coinl[i].lower() in labels and not any([ coinl[i] in coin[k] for k in coin.keys() ]):
       coin[''].append(coinl[i])
