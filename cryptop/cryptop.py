@@ -61,6 +61,7 @@ NROFDECIMALS = 2
 FIELD = 0
 FIELD_OFFSET = 0
 BALANCE_TIME = 0
+SHOW_BALANCES = 1
 
 KEY_ESCAPE = 27
 KEY_ENTER = 13
@@ -69,6 +70,7 @@ KEY_SPACE = 32
 KEY_ZERO = 48
 KEY_A = 65
 KEY_F = 70
+KEY_H = 72
 KEY_Q = 81
 KEY_R = 82
 KEY_S = 83
@@ -77,6 +79,7 @@ KEY_T = 84
 KEY_V = 86
 KEY_a = 97
 KEY_f = 102
+KEY_h = 104
 KEY_q = 113
 KEY_r = 114
 KEY_s = 115
@@ -658,36 +661,38 @@ def write_scr(stdscr, wallet, y, x):
   held = { 'custom' : [], '' : [] }
   labels = []
 
-  for i in range(len(coinl)):
-    if coinl[i].lower() == 'bittrex':
-      balance = bittrex(*heldl[i].split(':'))
-      coin['bittrex'] = [ c['Currency'].replace('BCC','BCH') for c in balance['result'] if c['Balance'] >= 0.01 ]
-      held['bittrex'] = [ c['Balance'] for c in balance['result'] if c['Balance'] >= 0.01 ]
-      labels.append('bittrex')
-    elif coinl[i].lower() == 'binance':
-      balance = binance(*heldl[i].split(':'))
-      coin['binance'] = [ c['asset'].replace('BCC','BCH') for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 ]
-      held['binance'] = [ float(c['free']) + float(c['locked']) for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 ]
-      labels.append('binance')
-    elif heldl[i].lower().startswith('0x'):
-      tokens = ethereum(heldl[i])
-      coin[coinl[i].lower()] = [ tok for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() and tokens[heldl[i]][tok] >= 0.01 ]
-      held[coinl[i].lower()] = [ tokens[heldl[i]][tok] for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() and tokens[heldl[i]][tok] >= 0.01 ]
-      labels.append(coinl[i].lower())
-    elif (heldl[i][0] == '3' or heldl[i][0] == '1') and len(heldl[i]) > 24:
-      coin[coinl[i].lower()] = ['BTC']
-      assert not isinstance(bitcoin(heldl[i]),dict), str(bitcoin(heldl[i]).keys())
-      held[coinl[i].lower()] = [bitcoin(heldl[i])]
-      labels.append(coinl[i].lower())
-    elif float(heldl[i]) >= 0.01:
-      coin['custom'].append(coinl[i])
-      held['custom'].append(float(heldl[i]))
+  global CCSET, SHOW_BALANCES
+
+  if SHOW_BALANCES:
+    for i in range(len(coinl)):
+      if coinl[i].lower() == 'bittrex':
+        balance = bittrex(*heldl[i].split(':'))
+        coin['bittrex'] = [ c['Currency'].replace('BCC','BCH') for c in balance['result'] if c['Balance'] >= 0.01 ]
+        held['bittrex'] = [ c['Balance'] for c in balance['result'] if c['Balance'] >= 0.01 ]
+        labels.append('bittrex')
+      elif coinl[i].lower() == 'binance':
+        balance = binance(*heldl[i].split(':'))
+        coin['binance'] = [ c['asset'].replace('BCC','BCH') for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 ]
+        held['binance'] = [ float(c['free']) + float(c['locked']) for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 ]
+        labels.append('binance')
+      elif heldl[i].lower().startswith('0x'):
+        tokens = ethereum(heldl[i])
+        coin[coinl[i].lower()] = [ tok for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() and tokens[heldl[i]][tok] >= 0.01 ]
+        held[coinl[i].lower()] = [ tokens[heldl[i]][tok] for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() and tokens[heldl[i]][tok] >= 0.01 ]
+        labels.append(coinl[i].lower())
+      elif (heldl[i][0] == '3' or heldl[i][0] == '1') and len(heldl[i]) > 24:
+        coin[coinl[i].lower()] = ['BTC']
+        assert not isinstance(bitcoin(heldl[i]),dict), str(bitcoin(heldl[i]).keys())
+        held[coinl[i].lower()] = [bitcoin(heldl[i])]
+        labels.append(coinl[i].lower())
+      elif float(heldl[i]) >= 0.01:
+        coin['custom'].append(coinl[i])
+        held['custom'].append(float(heldl[i]))
   for i in range(len(coinl)):
     if not coinl[i].lower() in labels and not any([ coinl[i] in coin[k] for k in coin.keys() ]):
       coin[''].append(coinl[i])
       held[''].append(0)
 
-  global CCSET
   CCSET= set([])
   for k in coin.keys():
     CCSET = set(list(CCSET) + coin[k])
@@ -705,10 +710,11 @@ def write_scr(stdscr, wallet, y, x):
       off += len(coin[key]) + 1
 
   if y > off:
-    stdscr.addnstr(y - 2, 0, 'Total Holdings: {:10.2f} {}  '
-      .format(total, CURRENCY), x, curses.color_pair(11))
+    if SHOW_BALANCES:
+      stdscr.addnstr(y - 2, 0, 'Total Holdings: {:10.2f} {}  '
+        .format(total, CURRENCY), x, curses.color_pair(11))
     stdscr.addnstr(y - 1, 0,
-      '[A] Add coin [R] Remove coin [F] Switch currency [S] Sort [C] Cycle sort [Q] Exit', x,
+      '[A] Add coin [R] Remove coin [F] Switch currency [S] Sort [C] Cycle sort [H] %s balances [Q] Exit' % ['Show','Hide'][SHOW_BALANCES], x,
       curses.color_pair(2))
 
   #global LOGTIME, LOGFILE
@@ -817,6 +823,10 @@ def mainc(stdscr):
         SYMBOL = SYMBOLMAP[CURRENCY]
         NROFDECIMALS = 2 if isfiat(CURRENCY) else 6
 
+    if inp in {KEY_h, KEY_H}:
+      global SHOW_BALANCES
+      SHOW_BALANCES = 1 - SHOW_BALANCES      
+
 def main():
   if os.path.isfile(BASEDIR):
     sys.exit('Please remove your old configuration file at {}'.format(BASEDIR))
@@ -844,8 +854,8 @@ def main():
   FIELD = float(CONFIG['theme'].get('field_length', 0))
   FIELD_OFFSET = float(CONFIG['theme'].get('field_offset', 4))
 
-  #requests_cache.install_cache(cache_name='api_cache', backend='memory',
-  #  expire_after=int(CONFIG['api'].get('cache', 60)))
+  requests_cache.install_cache(cache_name='api_cache', backend='memory',
+    expire_after=int(CONFIG['api'].get('cache', 60)))
 
   global WALLETFILE
   if len(sys.argv) > 1:
