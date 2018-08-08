@@ -667,14 +667,14 @@ def write_scr(stdscr, wallet, y, x):
     if coinl[i].lower() == 'bittrex':
       if SHOW_BALANCES:
         balance = bittrex(*heldl[i].split(':'))
-        coin['bittrex'] = [ c['Currency'].replace('BCC','BCH') for c in balance['result'] if c['Balance'] >= 0.01 ]
-        held['bittrex'] = [ c['Balance'] for c in balance['result'] if c['Balance'] >= 0.01 ]
+        coin['bittrex'] = [ c['Currency'].replace('BCC','BCH') for c in balance['result'] if c['Balance'] >= 0.01 and not c['Currency'].replace('BCC','BCH') in BLACKLIST ]
+        held['bittrex'] = [ c['Balance'] for c in balance['result'] if c['Balance'] >= 0.01 and not c['Currency'].replace('BCC','BCH') in BLACKLIST ]
       labels.append('bittrex')
     elif coinl[i].lower() == 'binance':
       if SHOW_BALANCES:
         balance = binance(*heldl[i].split(':'))
-        coin['binance'] = [ c['asset'].replace('BCC','BCH') for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 ]
-        held['binance'] = [ float(c['free']) + float(c['locked']) for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 ]
+        coin['binance'] = [ c['asset'].replace('BCC','BCH') for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 and not c['asset'] in BLACKLIST ]
+        held['binance'] = [ float(c['free']) + float(c['locked']) for c in balance['balances'] if float(c['free']) + float(c['locked']) >= 0.01 and not c['asset'] in BLACKLIST ]
       labels.append('binance')
     elif heldl[i].lower().startswith('0x'):
       if SHOW_BALANCES:
