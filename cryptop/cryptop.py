@@ -280,6 +280,8 @@ def update_binance(key, secret):
         timeout=5).json()
     if 'balances' in ret and ret['balances'] is not None:
       binance_tokens[key] = ret
+    else:
+      assert False, str(ret)
   except:
     if not key in binance_tokens.keys():
       binance_tokens[key] = { 'balances' : [] }
@@ -667,8 +669,8 @@ def write_scr(stdscr, wallet, y, x):
     if coinl[i].lower() == 'bittrex':
       if SHOW_BALANCES:
         balance = bittrex(*heldl[i].split(':'))
-        coin['bittrex'] = [ c['Currency'].replace('BCC','BCH') for c in balance['result'] if c['Balance'] >= 0.01 and not c['Currency'].replace('BCC','BCH') in BLACKLIST ]
-        held['bittrex'] = [ c['Balance'] for c in balance['result'] if c['Balance'] >= 0.01 and not c['Currency'].replace('BCC','BCH') in BLACKLIST ]
+        coin['bittrex'] = [ c['Currency'].replace('BCC','BCH') for c in balance['result'] if (c['Balance'] or 0) >= 0.01 and not c['Currency'].replace('BCC','BCH') in BLACKLIST ]
+        held['bittrex'] = [  (c['Balance'] or 0) for c in balance['result'] if (c['Balance'] or 0) >= 0.01 and not c['Currency'].replace('BCC','BCH') in BLACKLIST ]
       labels.append('bittrex')
     elif coinl[i].lower() == 'binance':
       if SHOW_BALANCES:
