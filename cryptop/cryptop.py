@@ -188,7 +188,7 @@ def update_coins():
   except:
     pass
   else:
-    for pair in ret['result']:
+    for pair in ret['result'] or []:
       if pair['MarketName'].split('-')[0] == 'ETH' and pair['Last'] is not None:
         tok = pair['MarketName'].split('-')[1].replace('BCC','BCH')
         if tok in stats.keys() and not isfiat(tok):
