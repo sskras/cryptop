@@ -145,15 +145,10 @@ def update_coins():
     if not fiat in stats.keys():
       stats[fiat] = {}
     try:
-      stats[fiat]['price_usd'] = 1. / rget('https://api.fixer.io/latest?base=USD')['rates'][fiat]
-      d24h = date.today() - timedelta(1)
-      r24h = 1. / rget('https://api.fixer.io/' + d24h.strftime('%Y-%m-%d') + '?base=USD')['rates'][fiat]
-      stats[fiat]['percent_change_24h'] = 100. - 100. * r24h / stats[fiat]['price_usd']
-      stats[fiat]['percent_change_1h'] = stats[fiat]['percent_change_24h'] / 24.
-
-      d7d = date.today() - timedelta(7)
-      r7d = 1. / rget('https://api.fixer.io/' + d7d.strftime('%Y-%m-%d') + '?base=USD')['rates'][fiat]
-      stats[fiat]['percent_change_7d'] = 100. - 100. * r7d / stats[fiat]['price_usd']
+      stats[fiat]['price_usd'] = 1. / rget('https://api.exchangeratesapi.io/latest?base=USD')['rates']['EUR']
+      stats[fiat]['percent_change_24h'] = 0
+      stats[fiat]['percent_change_1h'] = 0
+      stats[fiat]['percent_change_7d'] = 0
     except:
       try:
         rates = rget('https://www.quandl.com/api/v3/datasets/ECB/EURUSD')['dataset']['data']
