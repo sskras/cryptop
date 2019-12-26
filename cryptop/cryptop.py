@@ -233,8 +233,8 @@ def update_coins():
 
   for tok in CCSET:
     if tok.upper() in CGMAP:
-      ret = rget('https://api.coingecko.com/api/v3/coins/' + CGMAP[tok.upper()])
       try:
+        ret = rget('https://api.coingecko.com/api/v3/coins/' + CGMAP[tok.upper()])
         if ret['market_data']['total_volume']['usd'] == 0:
           continue
         if not tok in stats:
