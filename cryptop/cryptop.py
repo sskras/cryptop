@@ -164,7 +164,6 @@ def update_coins():
     try:
       ret = rget('https://min-api.cryptocompare.com/data/pricemultifull?fsyms=%s&tsyms=USD' % ','.join(list(CCSET)))
       for tok in ret['RAW']:
-        if tok in CGMAP: continue
         rates = [ stats[tok]['price_usd'],
         stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_1h'] / 100.),
         stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_24h'] / 100.),
@@ -235,19 +234,30 @@ def update_coins():
   for tok in CCSET:
     if tok.upper() in CGMAP:
       ret = rget('https://api.coingecko.com/api/v3/coins/' + CGMAP[tok.upper()])
-      if not tok in stats:
-        stats[tok] = {}
-        for d in ['1h','24h', '7d']:
-          stats[tok]['percent_change_' + d] = 0
-      stats[tok]['price_usd'] = ret['market_data']['current_price']['usd']
-      stats[tok]['24h_volume_usd'] = ret['market_data']['total_volume']['usd']
-      for d in ['1h','24h', '7d']:
-        if 'usd' in ret['market_data']['price_change_percentage_%s_in_currency'%d]:
-          stats[tok]['percent_change_' + d] = ret['market_data']['price_change_percentage_%s_in_currency'%d]['usd']
-        else:
+      try:
+        if ret['market_data']['total_volume']['usd'] == 0:
+          continue
+        if not tok in stats:
+          stats[tok] = {}
+          for d in ['1h','24h', '7d']:
+            stats[tok]['percent_change_' + d] = 0
+        stats[tok]['price_usd'] = ret['market_data']['current_price']['usd']
+        stats[tok]['24h_volume_usd'] = ret['market_data']['total_volume']['usd']
+        if stats[tok]['24h_volume_usd'] == 0:
           for alt in ['eur','btc','eth']:
-            if alt in ret['market_data']['price_change_percentage_%s_in_currency'%d]:
-              stats[tok]['percent_change_' + d] = ret['market_data']['price_change_percentage_%s_in_currency'%d][alt] * stats[alt.upper()]['price_usd']
+            if alt in ret['market_data']['total_volume']:
+              stats[tok]['24h_volume_usd'] = ret['market_data']['total_volume'][alt] * stats[alt.upper()]['price_usd']
+              break
+        for d in ['1h','24h', '7d']:
+          if 'usd' in ret['market_data']['price_change_percentage_%s_in_currency'%d]:
+            stats[tok]['percent_change_' + d] = ret['market_data']['price_change_percentage_%s_in_currency'%d]['usd']
+          else:
+            for alt in ['eur','btc','eth']:
+              if alt in ret['market_data']['price_change_percentage_%s_in_currency'%d]:
+                stats[tok]['percent_change_' + d] = ret['market_data']['price_change_percentage_%s_in_currency'%d][alt] * stats[alt.upper()]['price_usd']
+                break
+      except:
+        continue
 
   global coinstats
   coinstats = stats
