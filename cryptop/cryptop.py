@@ -266,7 +266,7 @@ def ticker():
   import time
   ts = 0
   while True:
-    time.sleep(max(min(int(time.time()) - ts, 20), 2))
+    time.sleep(max(min(int(time.time()) - ts, 20), 5))
     ts = int(time.time())
     update_coins()
 
