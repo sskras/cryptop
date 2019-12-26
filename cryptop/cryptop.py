@@ -99,6 +99,7 @@ rget = lambda url:requests.get(url,timeout=3).json()
 coinstats = {}
 coinmap = {'KNC' : 'kyber-network', 'BTG' : 'bitcoin-gold'}
 CCLIST = rget('https://min-api.cryptocompare.com/data/all/coinlist/')['Data']
+CGMAP = {x['symbol'].upper() : x['id'] for x in rget('https://api.coingecko.com/api/v3/coins/list')}
 CCSET = set([])
 def update_coins():
   global CURRENCYLIST
@@ -163,6 +164,7 @@ def update_coins():
     try:
       ret = rget('https://min-api.cryptocompare.com/data/pricemultifull?fsyms=%s&tsyms=USD' % ','.join(list(CCSET)))
       for tok in ret['RAW']:
+        if tok in CGMAP: continue
         rates = [ stats[tok]['price_usd'],
         stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_1h'] / 100.),
         stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_24h'] / 100.),
@@ -229,6 +231,26 @@ def update_coins():
           stats[tok]['percent_change_24h'] = 0
           stats[tok]['percent_change_7d'] = 0
           stats[tok]['24h_volume_usd'] = 0
+
+  for tok in CCSET:
+    if tok.upper() in CGMAP:
+      try:
+        ret = rget('https://api.coingecko.com/api/v3/coins/' + CGMAP[tok.upper()])
+        if not tok in stats:
+          stats[tok] = {}
+          for d in ['1h','24h', '7d']:
+            stats[tok]['percent_change_' + d] = 0
+        stats[tok]['price_usd'] = ret['market_data']['current_price']['usd']
+        stats[tok]['24h_volume_usd'] = ret['market_data']['total_volume']['usd']
+        for d in ['1h','24h', '7d']:
+          if 'usd' in ret['market_data']['price_change_percentage_%s_in_currency'%d]:
+            stats[tok]['percent_change_' + d] = ret['market_data']['price_change_percentage_%s_in_currency'%d]['usd']
+          else:
+            for alt in ['eur','btc','eth']:
+              if alt in ret['market_data']['price_change_percentage_%s_in_currency'%d]:
+                stats[tok]['percent_change_' + d] = ret['market_data']['price_change_percentage_%s_in_currency'%d][alt] * stats[alt.upper()]['price_usd']
+      except:
+        continue
 
   global coinstats
   coinstats = stats
@@ -308,49 +330,6 @@ def er(method, default):
   except:
     return default
 
-def update_erc20_balance(address): # doesn't catch OMG :(
-  import json
-  import time
-  global erc20_time, erc20_block, erc20, erc20_contracts
-
-  def er(method, default):
-    try:
-      etherscan_conn = http.client.HTTPSConnection("api.etherscan.io")
-      etherscan_conn.request("GET", method, {}, {})
-      data = etherscan_conn.getresponse()
-      data = json.loads(data.read().decode())
-      if 'result' in data.keys():
-        return data['result']
-      return default
-    except:
-      return default
-
-  if not address in erc20:
-    erc20[address] = {'ETH' : 0}
-    erc20_block[address] = 0
-
-  current_block = int(er("/api?module=proxy&action=eth_blockNumber&apikey=", "0xFFFFF"),0)
-  if current_block - erc20_block[address] >= 10:
-    erc20[address]['ETH'] = float(er("/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address, 0)) / 1e18
-    transactions = er("/api?module=account&action=txlist&address=%s&startblock=%d&endblock=%d&sort=asc&apikey=" % (address,erc20_block[address],current_block),[])
-    erc20_block[address] = current_block
-    erc20_contracts = set(list(erc20_contracts) + [tx['to'] for tx in transactions if tx['to'] != address])
-    erc20_contracts = set(list(erc20_contracts) + [tx['contractAddress'] for tx in transactions if tx['contractAddress'] != ''])
-    conn = http.client.HTTPSConnection("api.tokenbalance.com")
-    for tok in erc20_contracts:
-      conn.request("GET", "/token/%s/%s" % (tok,address), {}, {})
-      res = conn.getresponse()
-      data = json.loads(res.read().decode())
-      if 'symbol' in data.keys():
-        try:
-          conn.request("GET", "/balance/%s/%s" % (tok,address), {}, {})
-          res = conn.getresponse()
-          balance = json.loads(res.read().decode())
-        except:
-          continue
-        if balance > 0:
-          erc20[address][data['symbol']] = balance
-
 etherscan_conn = None
 erc20_balance = {}
 def get_erc20_balance(token, address):
@@ -366,8 +345,8 @@ def get_erc20_balance(token, address):
   if not token in tokens[address]:
     tokens[address][token] = { 'balance' : 0, 'eth_balance' : 0, 'time' : 0 }
 
-  if True: #time.time() - tokens[address][token]['time'] > 60:
-    #tokens[address][token]['time'] = time.time()
+  if time.time() - tokens[address][token]['time'] > 60:
+    tokens[address][token]['time'] = time.time()
     try:
       if token.lower() ==  'eth':
         data = rget("https://etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address)
@@ -390,7 +369,7 @@ def get_erc20_balance(token, address):
         tokens[address][token].update(r)
     except:
       pass
-  
+
   return float(tokens[address][token]['balance']),float(tokens[address][token]['eth_balance'])
 
 tokens = {}
@@ -825,7 +804,7 @@ def mainc(stdscr):
 
     if inp in {KEY_h, KEY_H}:
       global SHOW_BALANCES
-      SHOW_BALANCES = 1 - SHOW_BALANCES      
+      SHOW_BALANCES = 1 - SHOW_BALANCES
 
 def main():
   if os.path.isfile(BASEDIR):
