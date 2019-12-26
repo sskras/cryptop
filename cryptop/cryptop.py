@@ -234,23 +234,20 @@ def update_coins():
 
   for tok in CCSET:
     if tok.upper() in CGMAP:
-      try:
-        ret = rget('https://api.coingecko.com/api/v3/coins/' + CGMAP[tok.upper()])
-        if not tok in stats:
-          stats[tok] = {}
-          for d in ['1h','24h', '7d']:
-            stats[tok]['percent_change_' + d] = 0
-        stats[tok]['price_usd'] = ret['market_data']['current_price']['usd']
-        stats[tok]['24h_volume_usd'] = ret['market_data']['total_volume']['usd']
+      ret = rget('https://api.coingecko.com/api/v3/coins/' + CGMAP[tok.upper()])
+      if not tok in stats:
+        stats[tok] = {}
         for d in ['1h','24h', '7d']:
-          if 'usd' in ret['market_data']['price_change_percentage_%s_in_currency'%d]:
-            stats[tok]['percent_change_' + d] = ret['market_data']['price_change_percentage_%s_in_currency'%d]['usd']
-          else:
-            for alt in ['eur','btc','eth']:
-              if alt in ret['market_data']['price_change_percentage_%s_in_currency'%d]:
-                stats[tok]['percent_change_' + d] = ret['market_data']['price_change_percentage_%s_in_currency'%d][alt] * stats[alt.upper()]['price_usd']
-      except:
-        continue
+          stats[tok]['percent_change_' + d] = 0
+      stats[tok]['price_usd'] = ret['market_data']['current_price']['usd']
+      stats[tok]['24h_volume_usd'] = ret['market_data']['total_volume']['usd']
+      for d in ['1h','24h', '7d']:
+        if 'usd' in ret['market_data']['price_change_percentage_%s_in_currency'%d]:
+          stats[tok]['percent_change_' + d] = ret['market_data']['price_change_percentage_%s_in_currency'%d]['usd']
+        else:
+          for alt in ['eur','btc','eth']:
+            if alt in ret['market_data']['price_change_percentage_%s_in_currency'%d]:
+              stats[tok]['percent_change_' + d] = ret['market_data']['price_change_percentage_%s_in_currency'%d][alt] * stats[alt.upper()]['price_usd']
 
   global coinstats
   coinstats = stats
@@ -839,6 +836,7 @@ def main():
   global WALLETFILE
   if len(sys.argv) > 1:
     WALLETFILE = os.path.join(BASEDIR, '%s.json' % sys.argv[1])
+    CCSET = set(read_wallet().keys())
 
   curses.wrapper(mainc)
 
