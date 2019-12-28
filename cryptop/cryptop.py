@@ -98,7 +98,10 @@ def read_configuration(confpath):
 rget = lambda url:requests.get(url,timeout=3).json()
 coinstats = {}
 coinmap = {'KNC' : 'kyber-network', 'BTG' : 'bitcoin-gold'}
-CCLIST = rget('https://min-api.cryptocompare.com/data/all/coinlist/')['Data']
+try:
+  CCLIST = rget('https://min-api.cryptocompare.com/data/all/coinlist/')['Data']
+except:
+  CCLIST = []
 CGMAP = {x['symbol'].upper() : x['id'] for x in rget('https://api.coingecko.com/api/v3/coins/list')}
 CCSET = set([])
 def update_coins():
