@@ -388,6 +388,7 @@ def get_ethereum(address):
 
   global BLACKLIST, tokens, ethplorer_conn, etherscan_conn
   tinfo = {'.' : 0}
+  data = {}
   apidown = False
   try:
     data = rget('https://api.ethplorer.io/getAddressInfo/%s?apiKey=freekey' % address)
@@ -398,16 +399,14 @@ def get_ethereum(address):
       apidown = not tinfo['ETH']
   except Exception:
     try:
-      balance = rget("https://api.etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address)
-      if 'result' in balance.keys():
+      data = rget("https://api.etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address)
+      if 'result' in data.keys():
         try:
-          tinfo['ETH'] = float(balance['result']) / 1e18
+          tinfo['ETH'] = float(data['result']) / 1e18
         except Exception:
           apidown = True
-          data={}
     except Exception:
       apidown = True
-      data={}
   if apidown and 'tokens' in data.keys():
     if 'tokens' in data.keys():
       for tok in data['tokens']:
@@ -441,7 +440,7 @@ def ethereum(address):
     tokens[address] = {}
     tokens[address]['.'] = time.time()
     return get_ethereum(address)
-  elif time.time() - tokens[address]['.'] > 30:
+  elif time.time() - tokens[address]['.'] > 60:
     tokens[address]['.'] = time.time()
     _thread.start_new_thread(get_ethereum, (address,))
   return tokens
