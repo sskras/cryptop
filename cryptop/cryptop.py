@@ -26,6 +26,11 @@ import json
 import _thread
 from datetime import date, timedelta
 
+import signal
+import faulthandler
+faulthandler.enable()
+faulthandler.register(signal.SIGUSR1, all_threads=True, chain=True)
+
 # GLOBALS!
 BASEDIR = os.path.join(os.path.expanduser('~'), '.cryptop')
 WALLETFILE = os.path.join(BASEDIR, 'wallet.json')
@@ -207,32 +212,33 @@ def update_coins():
   except:
     pass
   else:
-    for pair in ret:
-      if pair['symbol'][-3:] == 'ETH':
-        tok = pair['symbol'][:-3].replace('BCC','BCH')
-        if isfiat(tok): continue
-        if tok in stats.keys():
-          rates = [ stats[tok]['price_usd'],
-          stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_1h'] / 100.),
-          stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_24h'] / 100.),
-          stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_7d'] / 100.) ]
-          price = stats[tok]['price_usd'] / stats['ETH']['price_usd']
-          prev = stats[tok]['price_usd']
-          if prev == 0:
-            prev = price if price > 0 else 1
-          stats[tok]['price_usd'] = (0.75 * float(pair['price']) + 0.25 * price) * stats['ETH']['price_usd']
-          rates = [ r + (stats[tok]['price_usd'] - prev) * r / prev for r in rates ]
-          if rates[0]:
-            stats[tok]['percent_change_1h'] = 100. - 100. * rates[1] / rates[0]
-            stats[tok]['percent_change_24h'] = 100. - 100. * rates[2] / rates[0]
-            stats[tok]['percent_change_7d'] = 100. - 100. * rates[3] / rates[0]
-        else:
-          stats[tok] = {}
-          stats[tok]['price_usd'] = float(pair['price']) * stats['ETH']['price_usd']
-          stats[tok]['percent_change_1h'] = 0
-          stats[tok]['percent_change_24h'] = 0
-          stats[tok]['percent_change_7d'] = 0
-          stats[tok]['24h_volume_usd'] = 0
+    if isinstance(ret,list):
+      for pair in ret:
+        if pair['symbol'][-3:] == 'ETH':
+          tok = pair['symbol'][:-3].replace('BCC','BCH')
+          if isfiat(tok): continue
+          if tok in stats.keys():
+            rates = [ stats[tok]['price_usd'],
+            stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_1h'] / 100.),
+            stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_24h'] / 100.),
+            stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_7d'] / 100.) ]
+            price = stats[tok]['price_usd'] / stats['ETH']['price_usd']
+            prev = stats[tok]['price_usd']
+            if prev == 0:
+              prev = price if price > 0 else 1
+            stats[tok]['price_usd'] = (0.75 * float(pair['price']) + 0.25 * price) * stats['ETH']['price_usd']
+            rates = [ r + (stats[tok]['price_usd'] - prev) * r / prev for r in rates ]
+            if rates[0]:
+              stats[tok]['percent_change_1h'] = 100. - 100. * rates[1] / rates[0]
+              stats[tok]['percent_change_24h'] = 100. - 100. * rates[2] / rates[0]
+              stats[tok]['percent_change_7d'] = 100. - 100. * rates[3] / rates[0]
+          else:
+            stats[tok] = {}
+            stats[tok]['price_usd'] = float(pair['price']) * stats['ETH']['price_usd']
+            stats[tok]['percent_change_1h'] = 0
+            stats[tok]['percent_change_24h'] = 0
+            stats[tok]['percent_change_7d'] = 0
+            stats[tok]['24h_volume_usd'] = 0
 
   for tok in CCSET:
     if tok.upper() in CGMAP:
