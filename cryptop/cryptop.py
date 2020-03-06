@@ -217,7 +217,7 @@ def update_coins():
         if pair['symbol'][-3:] == 'ETH':
           tok = pair['symbol'][:-3].replace('BCC','BCH')
           if isfiat(tok): continue
-          if tok in ['ETH'] + list(stats.keys()):
+          if tok in list(stats.keys()):
             rates = [ stats[tok]['price_usd'],
             stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_1h'] / 100.),
             stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_24h'] / 100.),
@@ -232,7 +232,7 @@ def update_coins():
               stats[tok]['percent_change_1h'] = 100. - 100. * rates[1] / rates[0]
               stats[tok]['percent_change_24h'] = 100. - 100. * rates[2] / rates[0]
               stats[tok]['percent_change_7d'] = 100. - 100. * rates[3] / rates[0]
-          else:
+          elif 'ETH' in stats.keys():
             stats[tok] = {}
             stats[tok]['price_usd'] = float(pair['price']) * stats['ETH']['price_usd']
             stats[tok]['percent_change_1h'] = 0
