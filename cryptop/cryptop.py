@@ -138,17 +138,17 @@ def update_coins():
     data = json.loads(data.read().decode())
   except:
     return
-  for item in data[::-1]:
-    if item['symbol'] in coinmap.keys() and coinmap[item['symbol']] != item['id']:
-      continue
-    if item['symbol'] in CCLIST:
-      clist.append(item['symbol'])
-    if item['symbol'] in CURRENCYLIST and not isfiat(item['symbol']) and not item['symbol'] in cmclist:
-      stats[item['symbol']]['24h_volume_usd'] = item['24h_volume_usd']
-    else:
-      stats[item['symbol']] = {}
-      for key in ['price_usd', '24h_volume_usd', 'percent_change_1h', 'percent_change_24h', 'percent_change_7d']:
-        stats[item['symbol']][key] = float(item[key] or 0)
+  #for item in data[::-1]:
+  #  if item['symbol'] in coinmap.keys() and coinmap[item['symbol']] != item['id']:
+  #    continue
+  #  if item['symbol'] in CCLIST:
+  #    clist.append(item['symbol'])
+  #  if item['symbol'] in CURRENCYLIST and not isfiat(item['symbol']) and not item['symbol'] in cmclist:
+  #    stats[item['symbol']]['24h_volume_usd'] = item['24h_volume_usd']
+  #  else:
+  #    stats[item['symbol']] = {}
+  #    for key in ['price_usd', '24h_volume_usd', 'percent_change_1h', 'percent_change_24h', 'percent_change_7d']:
+  #      stats[item['symbol']][key] = float(item[key] or 0)
 
   for fiat in [ f for f in CURRENCYLIST if isfiat(f) and f != 'USD']:
     if not fiat in stats.keys():
@@ -267,6 +267,11 @@ def update_coins():
                 break
       except:
         continue
+
+  for tok in stats:
+    for k in ['24h_volume_usd']:
+      if not k in stats[tok]:
+        stats[tok][k] = 0
 
   global coinstats
   coinstats = stats
