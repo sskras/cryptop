@@ -100,7 +100,7 @@ def read_configuration(confpath):
   CONFIG.read(confpath)
   return CONFIG
 
-rget = lambda url:requests.get(url,timeout=3).json()
+rget = lambda url:requests.get(url,timeout=7).json()
 coinstats = {}
 coinmap = {'KNC' : 'kyber-network', 'BTG' : 'bitcoin-gold'}
 try:
@@ -366,15 +366,15 @@ def get_erc20_balance(token, address):
   if not token in tokens[address]:
     tokens[address][token] = { 'balance' : 0, 'eth_balance' : 0, 'time' : 0 }
 
-  if time.time() - tokens[address][token]['time'] > 60:
+  if time.time() - tokens[address][token]['time'] > 180: #60:
     tokens[address][token]['time'] = time.time()
     try:
       if token.lower() ==  'eth':
-        data = rget("https://etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address)
+        data = rget("https://etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=%s" % (address, CONFIG['keys'].get('etherscan', '')))
         if 'result' in data and data['result']:
           tokens[address][token]['balance'] = float(data['result']) / 1e18
           tokens[address]['token']['eth_balance'] = float(data['result']) / 1e18
-      else:
+      elif False:
         etherscan_conn.request("GET", "/tokens?q="+token.lower(), {}, {})
         res = etherscan_conn.getresponse()
         data = res.read()
@@ -394,6 +394,7 @@ def get_erc20_balance(token, address):
   return float(tokens[address][token]['balance']),float(tokens[address][token]['eth_balance'])
 
 tokens = {}
+image = {}
 def get_ethereum(address):
   import json
 
@@ -402,7 +403,12 @@ def get_ethereum(address):
   data = {}
   apidown = False
   try:
-    data = rget('https://api.ethplorer.io/getAddressInfo/%s?apiKey=freekey' % address)
+    if not address in image:
+      image[address] = {'data': None,'time':0}
+    if time.time() - image[address]['time'] > 60 * 5:
+      image[address]['time'] = time.time()
+      image[address]['data'] = rget('https://api.ethplorer.io/getAddressInfo/%s?apiKey=%s' % (address,CONFIG['keys'].get('ethplorer', 'freekey')))
+    data = image[address]['data']
     if 'error' in data and address in tokens:
       assert False
     else:
@@ -410,7 +416,7 @@ def get_ethereum(address):
       apidown = not tinfo['ETH']
   except Exception:
     try:
-      data = rget("https://api.etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address)
+      data = rget("https://api.etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=%s" % (address, CONFIG['keys'].get('etherscan', '')))
       if 'result' in data.keys():
         try:
           tinfo['ETH'] = float(data['result']) / 1e18
@@ -424,7 +430,7 @@ def get_ethereum(address):
         if tok['tokenInfo']['symbol'] not in BLACKLIST:
           tinfo[tok['tokenInfo']['symbol']], _ = get_erc20_balance(tok['tokenInfo']['symbol'], address)
     try:
-      balance = rget("https://api.etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=" % address)
+      balance = rget("https://api.etherscan.io/api?module=account&action=balance&address=%s&tag=latest&apikey=%s" % (address, CONFIG['keys'].get('etherscan', '')))
     except Exception:
       return tokens
     if 'result' in balance.keys():
@@ -437,7 +443,7 @@ def get_ethereum(address):
       if tok['tokenInfo']['symbol'] not in BLACKLIST:
         if True: #time.time() - tok['tokenInfo']['lastUpdated'] > 60 * 60:
           try:
-            r = rget('https://api.etherscan.io/api?module=account&action=tokenbalance&contractaddress=%s&address=%s&tag=latest&apikey=' % (tok['tokenInfo']['address'], address))
+            r = rget('https://api.etherscan.io/api?module=account&action=tokenbalance&contractaddress=%s&address=%s&tag=latest&apikey=%s' % (tok['tokenInfo']['address'], address, CONFIG['keys'].get('etherscan', '')))
             tinfo[tok['tokenInfo']['symbol']] = float(r['result'] or 0) / 10**int(tok['tokenInfo']['decimals'])
           except:
             tinfo[tok['tokenInfo']['symbol']] = float(tok['balance']) / 10**int(tok['tokenInfo']['decimals'])
@@ -451,7 +457,7 @@ def ethereum(address):
     tokens[address] = {}
     tokens[address]['.'] = time.time()
     return get_ethereum(address)
-  elif time.time() - tokens[address]['.'] > 60:
+  elif time.time() - tokens[address]['.'] > 180:
     tokens[address]['.'] = time.time()
     _thread.start_new_thread(get_ethereum, (address,))
   return tokens
