@@ -100,6 +100,10 @@ def read_configuration(confpath):
   CONFIG.read(confpath)
   return CONFIG
 
+def log(filename, txt):
+  with open(filename, 'a') as f:
+    print(txt, file=f)
+
 CONFIG = read_configuration(CONFFILE)
 rget = lambda url:requests.get(url,timeout=7).json()
 coinstats = {}
@@ -205,27 +209,28 @@ def update_coins():
         (','.join(list(CCSET)), CONFIG['keys'].get('cryptocompare', '')))
     except:
       pass
-    for tok in ret['RAW']:
-      if tok in stats.keys() and not isfiat(tok):
-        rates = [ stats[tok]['price_usd'],
-        stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_1h'] / 100.),
-        stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_24h'] / 100.),
-        stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_7d'] / 100.) ]
-        prev = stats[tok]['price_usd']
-        ratio = float(ret['RAW'][tok]['USD']['PRICE']) / prev
-        if ratio > 0.75 and ratio < 1.5:
-          stats[tok]['price_usd'] = 0.25 * float(ret['RAW'][tok]['USD']['PRICE']) + 0.75 * prev
-          rates = [ r + (stats[tok]['price_usd'] - prev) * r / prev for r in rates ]
-          stats[tok]['percent_change_1h'] = 100. - 100. * rates[1] / rates[0]
-          stats[tok]['percent_change_24h'] = 100. - 100. * rates[2] / rates[0]
-          stats[tok]['percent_change_7d'] = 100. - 100. * rates[3] / rates[0]
-      else:
-        stats[tok] = {}
-        stats[tok]['price_usd'] = ret['RAW'][tok]['USD']['PRICE']
-        stats[tok]['percent_change_1h'] = ret['RAW'][tok]['USD']['CHANGEPCTHOUR']
-        stats[tok]['percent_change_24h'] = ret['RAW'][tok]['USD']['CHANGEPCT24HOUR']
-        stats[tok]['percent_change_7d'] = 0
-        stats[tok]['24h_volume_usd'] = ret['RAW'][tok]['USD']['TOTALVOLUME24HTO']
+    if 'RAW' in ret:
+      for tok in ret['RAW']:
+        if tok in stats.keys() and not isfiat(tok):
+          rates = [ stats[tok]['price_usd'],
+          stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_1h'] / 100.),
+          stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_24h'] / 100.),
+          stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_7d'] / 100.) ]
+          prev = stats[tok]['price_usd']
+          ratio = float(ret['RAW'][tok]['USD']['PRICE']) / prev
+          if ratio > 0.75 and ratio < 1.5:
+            stats[tok]['price_usd'] = 0.25 * float(ret['RAW'][tok]['USD']['PRICE']) + 0.75 * prev
+            rates = [ r + (stats[tok]['price_usd'] - prev) * r / prev for r in rates ]
+            stats[tok]['percent_change_1h'] = 100. - 100. * rates[1] / rates[0]
+            stats[tok]['percent_change_24h'] = 100. - 100. * rates[2] / rates[0]
+            stats[tok]['percent_change_7d'] = 100. - 100. * rates[3] / rates[0]
+        else:
+          stats[tok] = {}
+          stats[tok]['price_usd'] = ret['RAW'][tok]['USD']['PRICE']
+          stats[tok]['percent_change_1h'] = ret['RAW'][tok]['USD']['CHANGEPCTHOUR']
+          stats[tok]['percent_change_24h'] = ret['RAW'][tok]['USD']['CHANGEPCT24HOUR']
+          stats[tok]['percent_change_7d'] = 0
+          stats[tok]['24h_volume_usd'] = ret['RAW'][tok]['USD']['TOTALVOLUME24HTO']
 
   try:
     ret = rget('https://bittrex.com/api/v1.1/public/getmarketsummaries')
@@ -295,7 +300,8 @@ def ticker():
   import time
   ts = 0
   while True:
-    time.sleep(max(min(int(time.time()) - ts, 20), 5))
+    #time.sleep(max(min(int(time.time()) - ts, 20), 5))
+    time.sleep(30)
     ts = int(time.time())
     update_coins()
 
