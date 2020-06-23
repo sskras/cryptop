@@ -96,6 +96,7 @@ def log(*args, **kwargs):
   global LOGFILE
   date = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
   print(date, *args, **kwargs, file=LOGFILE)
+  LOGFILE.flush()
 
 def read_configuration(confpath):
   # copy our default config file
@@ -105,18 +106,18 @@ def read_configuration(confpath):
   CONFIG.read(confpath)
   return CONFIG
 
-def log(filename, txt):
-  with open(filename, 'a') as f:
-    print(txt, file=f)
-
+LOGFILE = open(LOGFILE, 'w')
+log('cryptop starting up')
 CONFIG = read_configuration(CONFFILE)
 rget = lambda url:requests.get(url,timeout=7).json()
 coinstats = {}
 
 clist = []
 try:
-  CCLIST = rget('https://min-api.cryptocompare.com/data/blockchain/list?api_key='+CONFIG['keys'].get('cryptocompare', ''))['Data']
+  #CCLIST = rget('https://min-api.cryptocompare.com/data/blockchain/list?api_key='+CONFIG['keys'].get('cryptocompare', ''))['Data']
+  CCLIST = rget('https://min-api.cryptocompare.com/data/blockchain/list?api_key=')['Data']
 except:
+  log("error: clist | cryptocompare: " + str(rget('https://min-api.cryptocompare.com/data/blockchain/list?api_key=')))
   CCLIST = {}
 CGMAP = {x['symbol'].upper() : x['id'] for x in rget('https://api.coingecko.com/api/v3/coins/list')}
 CCLIST = set(CCLIST.keys())
@@ -142,15 +143,18 @@ def update_coins():
       stats[coin]['percent_change_1h'] = 100. - 100. * (ret['Data'][-2]['close'] / ret['Data'][-1]['close'])
       stats[coin]['percent_change_24h'] = 100. - 100. * (ret['Data'][-25]['close'] / ret['Data'][-1]['close'])
       stats[coin]['percent_change_7d'] = 100. - 100. * (ret['Data'][-169]['close'] / ret['Data'][-1]['close'])
+    else:
+      log("error: update_coins | cryptocompare: " + str(ret))
 
-  cmc = http.client.HTTPSConnection("api.coinmarketcap.com")
-  clist = []
-  try:
-    cmc.request("GET", '/v1/ticker/?convert=EUR&limit=2000', {}, {})
-    data = cmc.getresponse()
-    data = json.loads(data.read().decode())
-  except:
-    return
+  #cmc = http.client.HTTPSConnection("api.coinmarketcap.com")
+  #clist = []
+  #try:
+  #  cmc.request("GET", '/v1/ticker/?convert=EUR&limit=2000', {}, {})
+  #  data = cmc.getresponse()
+  #  data = json.loads(data.read().decode())
+  #except:
+  #  log("error: update_coins | coinmarketcap: " + str(data))
+  #  return
   #for item in data[::-1]:
   #  if item['symbol'] in coinmap.keys() and coinmap[item['symbol']] != item['id']:
   #    continue
@@ -185,7 +189,7 @@ def update_coins():
     if tok.upper() in CGMAP:
       try:
         ret = rget('https://api.coingecko.com/api/v3/coins/' + CGMAP[tok.upper()])
-        if ret['market_data']['total_volume']['usd'] == 0:
+        if 'usd' not in ret['market_data']['total_volume'] or ret['market_data']['total_volume']['usd'] == 0:
           continue
         if not tok in stats:
           stats[tok] = {}
@@ -206,7 +210,9 @@ def update_coins():
               if alt in ret['market_data']['price_change_percentage_%s_in_currency'%d]:
                 stats[tok]['percent_change_' + d] = ret['market_data']['price_change_percentage_%s_in_currency'%d][alt] * stats[alt.upper()]['price_usd']
                 break
-      except:
+      except Exception as e:
+        #log("error: update_coins | coingecko:", str(ret), "|", str(e))
+        log("error: update_coins | coingecko:", str(e))
         continue
 
   if CCSET:
@@ -312,7 +318,7 @@ def ticker():
     #time.sleep(max(min(int(time.time()) - ts, 20), 5))
     #time.sleep(30)
     time.sleep(25 * (len(CURRENCYLIST)-1))
-    ts = int(time.time())
+    #ts = int(time.time())
     update_coins()
 
 bittrex_tokens = {}
@@ -883,8 +889,7 @@ def main():
     sys.exit('Please remove your old configuration file at {}'.format(BASEDIR))
   os.makedirs(BASEDIR, exist_ok=True)
 
-  global BLACKLIST, CURRENCYLIST, CURRENCY, SYMBOL, SYMBOLMAP, LOGFILE
-  LOGFILE = open(LOGFILE, 'w')
+  global BLACKLIST, CURRENCYLIST, CURRENCY, SYMBOL, SYMBOLMAP
   BLACKLIST = CONFIG['api'].get('blacklist', '').split(',')
   CURRENCYLIST = CONFIG['api'].get('currency', 'USD,ETH,BTC,EUR').split(',')
   assert CURRENCYLIST, "list of currency must not be empty"
