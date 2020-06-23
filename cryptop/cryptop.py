@@ -35,7 +35,7 @@ faulthandler.register(signal.SIGUSR1, all_threads=True, chain=True)
 BASEDIR = os.path.join(os.path.expanduser('~'), '.cryptop')
 WALLETFILE = os.path.join(BASEDIR, 'wallet.json')
 CONFFILE = os.path.join(BASEDIR, 'config.ini')
-LOGFILE = os.path.join(BASEDIR, 'trace.log')
+LOGFILE = os.path.join(BASEDIR, 'log')
 LOGTIME = 0
 CONFIG = configparser.ConfigParser()
 COIN_FORMAT = re.compile('[A-Z]{2,5},\d{0,}\.?\d{0,}')
@@ -92,6 +92,11 @@ KEY_c = 99
 KEY_t = 116
 KEY_v = 118
 
+def log(*args, **kwargs):
+  global LOGFILE
+  date = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+  print(date, *args, **kwargs, file=LOGFILE)
+
 def read_configuration(confpath):
   # copy our default config file
   if not os.path.isfile(confpath):
@@ -128,6 +133,7 @@ def update_coins():
       ret = rget('https://min-api.cryptocompare.com/data/histohour?fsym=%s&tsym=USD&toTs=%d&limit=175&api_key=%s' %
         (coin.upper(),int(time.time()),CONFIG['keys'].get('cryptocompare', '')))
     except:
+      log("error: update_coins | cryptocompare: " + str(ret))
       continue
     if ret['Data']:
       if not coin in stats.keys():
@@ -304,7 +310,8 @@ def ticker():
   ts = 0
   while True:
     #time.sleep(max(min(int(time.time()) - ts, 20), 5))
-    time.sleep(30)
+    #time.sleep(30)
+    time.sleep(25 * (len(CURRENCYLIST)-1))
     ts = int(time.time())
     update_coins()
 
@@ -876,7 +883,8 @@ def main():
     sys.exit('Please remove your old configuration file at {}'.format(BASEDIR))
   os.makedirs(BASEDIR, exist_ok=True)
 
-  global BLACKLIST, CURRENCYLIST, CURRENCY, SYMBOL, SYMBOLMAP
+  global BLACKLIST, CURRENCYLIST, CURRENCY, SYMBOL, SYMBOLMAP, LOGFILE
+  LOGFILE = open(LOGFILE, 'w')
   BLACKLIST = CONFIG['api'].get('blacklist', '').split(',')
   CURRENCYLIST = CONFIG['api'].get('currency', 'USD,ETH,BTC,EUR').split(',')
   assert CURRENCYLIST, "list of currency must not be empty"
