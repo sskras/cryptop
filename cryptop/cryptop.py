@@ -232,6 +232,9 @@ def update_coins():
           stats[tok]['percent_change_7d'] = 0
           stats[tok]['24h_volume_usd'] = ret['RAW'][tok]['USD']['TOTALVOLUME24HTO']
 
+  if not 'ETH' in stats.keys():
+    return
+
   try:
     ret = rget('https://bittrex.com/api/v1.1/public/getmarketsummaries')
   except:
