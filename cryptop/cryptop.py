@@ -117,9 +117,13 @@ try:
   #CCLIST = rget('https://min-api.cryptocompare.com/data/blockchain/list?api_key='+CONFIG['keys'].get('cryptocompare', ''))['Data']
   CCLIST = rget('https://min-api.cryptocompare.com/data/blockchain/list?api_key=')['Data']
 except:
-  log("error: clist | cryptocompare: " + str(rget('https://min-api.cryptocompare.com/data/blockchain/list?api_key=')))
+  log("error: clist | cryptocompare")
   CCLIST = {}
-CGMAP = {x['symbol'].upper() : x['id'] for x in rget('https://api.coingecko.com/api/v3/coins/list')}
+try:
+  CGMAP = {x['symbol'].upper() : x['id'] for x in rget('https://api.coingecko.com/api/v3/coins/list')}
+except:
+  log("error: cgmap | coingecko")
+  raise
 CCLIST = set(CCLIST.keys())
 CCSET = set([])
 
