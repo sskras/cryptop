@@ -134,6 +134,7 @@ def update_coins():
   stats = {}
   cmclist = set([])
   for coin in [ c for c in CURRENCYLIST if not isfiat(c) ]:
+    ret = {}
     try:
       ret = rget('https://min-api.cryptocompare.com/data/histohour?fsym=%s&tsym=USD&toTs=%d&limit=175&api_key=%s' %
         (coin.upper(),int(time.time()),CONFIG['keys'].get('cryptocompare', '')))
