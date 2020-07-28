@@ -506,20 +506,28 @@ def ethereum(address):
 
 btcb = {}
 def get_bitcoin(address):
-  binfo = {'.' : 0, 'balance' : 0}
+  binfo = {'.' : time.time(), 'balance' : 0}
   if not address in btcb:
     btcb[address] = binfo
   try:
     binfo['balance'] = float(rget('https://blockchain.info/q/addressbalance/%s' % address)) / 1e8
-    btcb[address] = binfo
   except:
-    pass
+    log("error: get_bitcoin | blockchain.info") 
+    try:
+      binfo['balance'] = float(rget('https://api.blockcypher.com/v1/btc/main/addrs/%s/balance' % address)['final_balance']) / 1e8
+    except:
+      log("error: get_bitcoin | blockcypher")
+      try:
+        binfo['balance'] = float(rget('https://api.blockchair.com/bitcoin/dashboards/address/%s' % address)['data'][address]['address']['balance']) / 1e8
+      except:
+        log("error: get_bitcoin | blockchair")
+  btcb[address] = binfo
   return btcb
 
 def bitcoin(address):
   if not address in btcb.keys():
     return get_bitcoin(address)[address]['balance']
-  elif time.time() - btcb[address]['.'] > 30:
+  elif time.time() - btcb[address]['.'] > 60:
     btcb[address]['.'] = time.time()
     _thread.start_new_thread(get_bitcoin, (address,))
   return btcb[address]['balance']
