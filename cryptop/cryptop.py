@@ -35,7 +35,7 @@ faulthandler.register(signal.SIGUSR1, all_threads=True, chain=True)
 BASEDIR = os.path.join(os.path.expanduser('~'), '.cryptop')
 WALLETFILE = os.path.join(BASEDIR, 'wallet.json')
 CONFFILE = os.path.join(BASEDIR, 'config.ini')
-LOGFILE = os.path.join(BASEDIR, 'log')
+LOGFILE = os.path.join(BASEDIR, 'log' if len(sys.argv) == 1 else sys.argv[1] + '.log')
 LOGTIME = 0
 CONFIG = configparser.ConfigParser()
 COIN_FORMAT = re.compile('[A-Z]{2,5},\d{0,}\.?\d{0,}')
@@ -780,7 +780,7 @@ def write_scr(stdscr, wallet, y, x):
       off += len(coin[key]) + 1
 
   if y > off:
-    if SHOW_BALANCES:
+    if total > 0 and SHOW_BALANCES:
       stdscr.addnstr(y - 2, 0, 'Total Holdings: {:10.2f} {}  '
         .format(total, CURRENCY), x, curses.color_pair(11))
     stdscr.addnstr(y - 1, 0,
