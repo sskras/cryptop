@@ -114,8 +114,8 @@ coinstats = {}
 
 clist = []
 try:
-  #CCLIST = rget('https://min-api.cryptocompare.com/data/blockchain/list?api_key='+CONFIG['keys'].get('cryptocompare', ''))['Data']
-  CCLIST = rget('https://min-api.cryptocompare.com/data/blockchain/list?api_key=')['Data']
+  CCLIST = rget('https://min-api.cryptocompare.com/data/blockchain/list?api_key='+CONFIG['keys'].get('cryptocompare', ''))['Data']
+  #CCLIST = rget('https://min-api.cryptocompare.com/data/blockchain/list?api_key=')['Data']
 except:
   log("error: clist | cryptocompare")
   CCLIST = {}
@@ -307,6 +307,11 @@ def update_coins():
             stats[tok]['percent_change_24h'] = 0
             stats[tok]['percent_change_7d'] = 0
             stats[tok]['24h_volume_usd'] = 0
+        elif pair['symbol'][-4:] == 'USDT':
+          tok = pair['symbol'][:-4].replace('BCC','BCH')
+          if isfiat(tok): continue
+          if tok in list(stats.keys()):
+            stats[tok]['price_usd'] = float(pair['price'])
 
   for tok in stats:
     for k in ['24h_volume_usd']:
@@ -322,7 +327,7 @@ def ticker():
   while True:
     #time.sleep(max(min(int(time.time()) - ts, 20), 5))
     #time.sleep(30)
-    time.sleep(25 * (len(CURRENCYLIST)-1))
+    time.sleep(2 * 25 * (len(CURRENCYLIST)-1))
     #ts = int(time.time())
     update_coins()
 
