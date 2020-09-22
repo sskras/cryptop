@@ -120,7 +120,8 @@ except:
   log("error: clist | cryptocompare")
   CCLIST = {}
 try:
-  CGMAP = {x['symbol'].upper() : x['id'] for x in rget('https://api.coingecko.com/api/v3/coins/list')}
+  CGMAP = {x['symbol'].upper() : x['id'] for x in rget('https://api.coingecko.com/api/v3/coins/list')[::-1]}
+  CGMAP['UNI'] = 'uniswap' # HACK
 except:
   log("error: cgmap | coingecko")
   raise
@@ -216,7 +217,6 @@ def update_coins():
                 stats[tok]['percent_change_' + d] = ret['market_data']['price_change_percentage_%s_in_currency'%d][alt] * stats[alt.upper()]['price_usd']
                 break
       except Exception as e:
-        #log("error: update_coins | coingecko:", str(ret), "|", str(e))
         log("error: update_coins | coingecko:", str(e))
         continue
 
@@ -307,7 +307,7 @@ def update_coins():
             stats[tok]['percent_change_24h'] = 0
             stats[tok]['percent_change_7d'] = 0
             stats[tok]['24h_volume_usd'] = 0
-        elif pair['symbol'][-4:] == 'USDT':
+        elif pair['symbol'][-4:] == 'USDT' and False:
           tok = pair['symbol'][:-4].replace('BCC','BCH')
           if isfiat(tok): continue
           if tok in list(stats.keys()):
