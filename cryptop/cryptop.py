@@ -175,7 +175,7 @@ def update_coins():
 
   for fiat in [ f for f in CURRENCYLIST if isfiat(f) and f != 'USD']:
     if not fiat in stats.keys():
-      stats[fiat] = {}
+      stats[fiat] = {'.' : 0}
     try:
       stats[fiat]['price_usd'] = 1. / rget('https://api.exchangeratesapi.io/latest?base=USD')['rates']['EUR']
       stats[fiat]['percent_change_24h'] = 0
@@ -183,7 +183,9 @@ def update_coins():
       stats[fiat]['percent_change_7d'] = 0
     except:
       try:
-        rates = rget('https://www.quandl.com/api/v3/datasets/ECB/EURUSD')['dataset']['data']
+        #if time.time() - stats[fiat]['.'] > 30 * 60:
+        rates = rget('https://www.quandl.com/api/v3/datasets/ECB/EURUSD?api_key='+CONFIG['keys'].get('quandl', ''))['dataset']['data']
+        #stats[fiat]['.'] = time.time()
       except:
         continue
       stats[fiat]['price_usd'] = rates[0][1]
@@ -199,7 +201,7 @@ def update_coins():
           continue
         if not tok in stats:
           stats[tok] = {}
-          for d in ['1h','24h', '7d']:
+          for d in ['1h','24h','7d']:
             stats[tok]['percent_change_' + d] = 0
         stats[tok]['price_usd'] = ret['market_data']['current_price']['usd']
         stats[tok]['24h_volume_usd'] = ret['market_data']['total_volume']['usd']
@@ -208,7 +210,7 @@ def update_coins():
             if alt in ret['market_data']['total_volume']:
               stats[tok]['24h_volume_usd'] = ret['market_data']['total_volume'][alt] * stats[alt.upper()]['price_usd']
               break
-        for d in ['1h','24h', '7d']:
+        for d in ['1h','24h','7d']:
           if 'usd' in ret['market_data']['price_change_percentage_%s_in_currency'%d]:
             stats[tok]['percent_change_' + d] = ret['market_data']['price_change_percentage_%s_in_currency'%d]['usd']
           else:
@@ -251,6 +253,15 @@ def update_coins():
 
   if not 'ETH' in stats.keys():
     return
+
+  for tok in stats:
+    for k in ['24h_volume_usd']:
+      if not k in stats[tok]:
+        stats[tok][k] = 0
+
+  global coinstats
+  coinstats = stats
+  return
 
   try:
     ret = rget('https://bittrex.com/api/v1.1/public/getmarketsummaries')
@@ -318,7 +329,7 @@ def update_coins():
       if not k in stats[tok]:
         stats[tok][k] = 0
 
-  global coinstats
+  #global coinstats
   coinstats = stats
 
 def ticker():
