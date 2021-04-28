@@ -230,7 +230,7 @@ def update_coins():
       pass
     if 'RAW' in ret:
       for tok in ret['RAW']:
-        if tok in stats.keys() and not isfiat(tok):
+        if tok in stats.keys() and 'price_usd' in stats[tok] and not isfiat(tok):
           rates = [ stats[tok]['price_usd'],
           stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_1h'] / 100.),
           stats[tok]['price_usd'] * (1. - stats[tok]['percent_change_24h'] / 100.),
