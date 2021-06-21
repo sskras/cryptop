@@ -761,9 +761,18 @@ def write_scr(stdscr, wallet, y, x):
       labels.append('binance')
     elif heldl[i].lower().startswith('0x'):
       if SHOW_BALANCES:
-        tokens = ethereum(heldl[i])
-        coin[coinl[i].lower()] = [ tok for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() and tokens[heldl[i]][tok] >= 0.01 ]
-        held[coinl[i].lower()] = [ tokens[heldl[i]][tok] for tok in tokens[heldl[i]].keys() if tok != '.' and tok in coinstats.keys() and tokens[heldl[i]][tok] >= 0.01 ]
+        coin[coinl[i].lower()] = []
+        held[coinl[i].lower()] = []
+        for addr in heldl[i].split(','):
+          tokens = ethereum(addr)
+          for tok in tokens[addr].keys():
+            if tok != '.' and tok in coinstats.keys() and tokens[addr][tok] >= 0.01:
+              try:
+                idx = coin[coinl[i].lower()].index(tok)
+                held[coinl[i].lower()][idx] += tokens[addr][tok]
+              except:
+                coin[coinl[i].lower()].append(tok)
+                held[coinl[i].lower()].append(tokens[addr][tok])
       labels.append(coinl[i].lower())
     elif (heldl[i][0] == '3' or heldl[i][0] == '1') and len(heldl[i]) > 24:
       if SHOW_BALANCES:
