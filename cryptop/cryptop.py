@@ -67,6 +67,7 @@ FIELD = 0
 FIELD_OFFSET = 0
 BALANCE_TIME = 0
 SHOW_BALANCES = 1
+CUSTOMLABEL = 'custom'
 
 KEY_ESCAPE = 27
 KEY_ENTER = 13
@@ -687,6 +688,7 @@ def write_coins(name, coins, held, stdscr, x, y, off=0):
   width -= 5
   ticks = [FIELD + 12 - FIELD_OFFSET,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12,FIELD + 12]
   diffs = [0,0,2,2,2,3,3,3]
+  #diffs = [0,0,2,2,2,4,4,4]
   scale = max(width / float(sum(ticks)), 1.0)
   hticks = [int(t * scale) for t in ticks]
   sticks = [int(t * scale - d) for t,d in zip(ticks,diffs)]
@@ -740,8 +742,8 @@ def write_scr(stdscr, wallet, y, x):
   coinl = list(wallet.keys())
   heldl = list(wallet.values())
 
-  coin = { 'custom' : [], '' : [] }
-  held = { 'custom' : [], '' : [] }
+  coin = { CUSTOMLABEL : [], '' : [] }
+  held = { CUSTOMLABEL : [], '' : [] }
   labels = []
 
   global CCSET, SHOW_BALANCES
@@ -781,8 +783,8 @@ def write_scr(stdscr, wallet, y, x):
         held[coinl[i].lower()] = [bitcoin(heldl[i])]
       labels.append(coinl[i].lower())
     elif float(heldl[i]) >= 0.01 and SHOW_BALANCES:
-      coin['custom'].append(coinl[i])
-      held['custom'].append(float(heldl[i]))
+      coin[CUSTOMLABEL].append(coinl[i])
+      held[CUSTOMLABEL].append(float(heldl[i]))
   for i in range(len(coinl)):
     if not coinl[i].lower() in labels and not any([ coinl[i] in coin[k] for k in coin.keys() ]):
       coin[''].append(coinl[i])
@@ -794,7 +796,7 @@ def write_scr(stdscr, wallet, y, x):
 
   off = 0
   stdscr.erase()
-  default_keys = ['', 'custom', 'bittrex', 'etherdelta']
+  default_keys = ['', CUSTOMLABEL, 'bittrex', 'etherdelta']
   for key in default_keys:
     if key in coin and coin[key]:
       total += write_coins(key.upper(), coin[key], held[key], stdscr, x, y, off)
@@ -927,9 +929,10 @@ def main():
     sys.exit('Please remove your old configuration file at {}'.format(BASEDIR))
   os.makedirs(BASEDIR, exist_ok=True)
 
-  global BLACKLIST, CURRENCYLIST, CURRENCY, SYMBOL, SYMBOLMAP
+  global BLACKLIST, CURRENCYLIST, CURRENCY, SYMBOL, SYMBOLMAP, CUSTOMLABEL
   BLACKLIST = CONFIG['api'].get('blacklist', '').split(',')
   CURRENCYLIST = CONFIG['api'].get('currency', 'USD,ETH,BTC,EUR').split(',')
+  CUSTOMLABEL = CONFIG['locale'].get('custom_label', 'CUSTOM')
   assert CURRENCYLIST, "list of currency must not be empty"
   CURRENCY = CURRENCYLIST[0]
   for cur in CURRENCYLIST:
@@ -938,6 +941,7 @@ def main():
         SYMBOLMAP[cur] = cur[0]
       else:
         SYMBOLMAP[cur] = cur
+  SYMBOL = SYMBOLMAP[CURRENCY]
 
   update_coins()
   _thread.start_new_thread(ticker, ())
